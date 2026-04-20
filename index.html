@@ -1,0 +1,2221 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Q-learning i Double Q-Learning w labiryncie</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-1: #071121;
+      --bg-2: #102544;
+      --panel: rgba(4, 16, 33, 0.92);
+      --panel-2: rgba(13, 28, 52, 0.95);
+      --line: #2d63d8;
+      --text: #eef4ff;
+      --muted: #b8c8e4;
+      --good: #29d17c;
+      --warn: #ffcf4d;
+      --bad: #ff6b6b;
+      --cyan: #4bd7ff;
+      --violet: #a78bfa;
+      --shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+      --radius: 10px;
+      --shadow-big-blur: 10px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(73, 129, 255, 0.22), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(0, 255, 184, 0.12), transparent 24%),
+        linear-gradient(135deg, var(--bg-1), var(--bg-2));
+    }
+
+    body {
+      padding: 14px;
+    }
+
+    #layout {
+      display: grid;
+      grid-template-columns: 360px minmax(620px, 1fr) 460px;
+      gap: 14px;
+      max-width: 1800px;
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(69, 120, 255, 0.55);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    #ui,
+    #sim,
+    #docs {
+      padding: 16px;
+      max-height: calc(100vh - 28px);
+      overflow: auto;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.2;
+      text-shadow: 0 0 var(--shadow-big-blur) var(--line);
+    }
+
+    h1 {
+      font-size: 1.65rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    h2 {
+      font-size: 1.12rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    h3 {
+      font-size: 0.98rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #f8fbff;
+    }
+
+    p,
+    li {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.88rem;
+    }
+
+    p {
+      margin: 0 0 10px;
+    }
+
+    ul,
+    ol {
+      margin: 0 0 12px 20px;
+      padding: 0;
+    }
+
+    .subtle {
+      color: #9fb4d8;
+      font-size: 0.88rem;
+    }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .hero .subtle {
+      line-height: 1.45;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .metric {
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(20, 40, 73, 0.92), rgba(10, 20, 40, 0.95));
+      border: 1px solid rgba(72, 117, 220, 0.36);
+      min-height: 68px;
+    }
+
+    .metric span {
+      display: block;
+      font-size: 0.78rem;
+      color: #9cb0d4;
+      margin-bottom: 5px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .metric b {
+      font-size: 1rem;
+      color: white;
+    }
+
+    .section-card {
+      padding: 13px;
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(18, 34, 62, 0.9), rgba(10, 21, 41, 0.95));
+      border: 1px solid rgba(76, 123, 228, 0.28);
+      margin-bottom: 12px;
+    }
+
+    .control-group {
+      margin-bottom: 12px;
+    }
+
+    label,
+    .label-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: #e8f1ff;
+      font-size: 0.95rem;
+      font-weight: 650;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .value-line {
+      margin-top: 5px;
+      font-size: 0.88rem;
+      color: #9db2d7;
+    }
+
+    .value-line b {
+      color: white;
+    }
+
+    input[type="range"],
+    select {
+      width: 100%;
+      cursor: pointer;
+    }
+
+    input[type="range"] {
+      accent-color: #5ab3ff;
+    }
+
+    select,
+    button {
+      background: linear-gradient(180deg, rgba(42, 74, 131, 0.94), rgba(23, 43, 80, 0.98));
+      color: white;
+      border: 1px solid rgba(90, 141, 255, 0.45);
+      border-radius: var(--radius);
+      padding: 9px 10px;
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+      transition: 0.2s ease;
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover {
+      filter: brightness(1.08);
+    }
+
+    button {
+      font-weight: 700;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .button-danger {
+      background: linear-gradient(180deg, rgba(164, 32, 41, 0.96), rgba(112, 18, 26, 0.98));
+      border-color: rgba(255, 111, 111, 0.4);
+    }
+
+    .button-secondary {
+      background: linear-gradient(180deg, rgba(68, 84, 104, 0.96), rgba(40, 51, 65, 0.98));
+      border-color: rgba(170, 182, 201, 0.32);
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+
+    .rt {
+      background: rgba(36, 191, 122, 0.16);
+      color: #8af2bc;
+      border-color: rgba(84, 224, 153, 0.32);
+    }
+
+    .next {
+      background: rgba(98, 162, 255, 0.15);
+      color: #8dc7ff;
+      border-color: rgba(98, 162, 255, 0.3);
+    }
+
+    .reset-ep {
+      background: rgba(255, 179, 71, 0.15);
+      color: #ffd185;
+      border-color: rgba(255, 188, 90, 0.3);
+    }
+
+    .reset-q {
+      background: rgba(255, 101, 132, 0.16);
+      color: #ff9db2;
+      border-color: rgba(255, 120, 148, 0.32);
+    }
+
+    .tabular {
+      background: rgba(75, 215, 255, 0.13);
+      color: #9deefe;
+      border-color: rgba(75, 215, 255, 0.28);
+    }
+
+    .toggle-line {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
+      font-weight: 650;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .toggle-line input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #66b3ff;
+      cursor: pointer;
+    }
+
+    .hidden-panel {
+      display: none;
+    }
+
+    .dimmed {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .mini-card {
+      padding: 10px;
+      border-radius: var(--radius);
+      background: rgba(11, 24, 46, 0.8);
+      border: 1px solid rgba(72, 114, 208, 0.28);
+      text-align: center;
+    }
+
+    .mini-card span {
+      display: block;
+      color: #97add2;
+      font-size: 0.8rem;
+      margin-bottom: 5px;
+    }
+
+    .mini-card b {
+      color: white;
+      font-size: 1rem;
+    }
+
+    canvas {
+      width: 100%;
+      display: block;
+      border-radius: 16px;
+      border: 1px solid rgba(88, 131, 230, 0.45);
+      background: linear-gradient(180deg, rgba(10, 19, 33, 0.96), rgba(7, 14, 24, 0.98));
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 12px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .canvas-wrap {
+      position: relative;
+    }
+
+    .canvas-hint {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius);
+      background: rgba(5, 12, 24, 0.72);
+      border: 1px solid rgba(93, 134, 226, 0.35);
+      font-size: 0.82rem;
+      color: #d6e6ff;
+      backdrop-filter: blur(6px);
+    }
+
+    .legend-line {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #a9bcde;
+    }
+
+    .legend-dot {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .green::before {
+      background: #22c55e;
+    }
+
+    .amber::before {
+      background: #f59e0b;
+    }
+
+    .blue::before {
+      background: #38bdf8;
+    }
+
+    .pink::before {
+      background: #f472b6;
+    }
+
+    .violet::before {
+      background: #a78bfa;
+    }
+
+    .formula {
+      display: block;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: rgba(10, 22, 42, 0.8);
+      border: 1px solid rgba(77, 122, 224, 0.22);
+      color: #d8e6ff;
+      margin: 8px 0 10px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.88rem;
+    }
+
+    .doc-block {
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(89, 125, 206, 0.18);
+    }
+
+    .doc-block:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+      margin-bottom: 0;
+    }
+
+    .note-box {
+      padding: 12px;
+      border-radius: var(--radius);
+      background: rgba(13, 27, 49, 0.82);
+      border: 1px solid rgba(92, 135, 236, 0.28);
+      margin-top: 8px;
+    }
+
+    .two-col-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 14px;
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .double-badge {
+      background: rgba(167, 139, 250, 0.15);
+      color: #c4b5fd;
+      border-color: rgba(167, 139, 250, 0.35);
+    }
+
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(42, 74, 131, 0.8);
+      border: 1px solid rgba(90, 141, 255, 0.45);
+      border-radius: 24px;
+      transition: 0.3s;
+    }
+
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 2px;
+      bottom: 2px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+
+    .toggle-switch input:checked+.toggle-slider {
+      background: linear-gradient(180deg, rgba(167, 109, 255, 0.6), rgba(100, 60, 200, 0.7));
+      border-color: rgba(167, 139, 250, 0.5);
+    }
+
+    .toggle-switch input:checked+.toggle-slider::before {
+      transform: translateX(20px);
+    }
+
+    @media (max-width: 1380px) {
+      #layout {
+        grid-template-columns: 340px 1fr;
+      }
+
+      #docs {
+        grid-column: 1 / -1;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 980px) {
+      body {
+        padding: 10px;
+      }
+
+      #layout {
+        grid-template-columns: 1fr;
+      }
+
+      #ui,
+      #sim,
+      #docs {
+        max-height: none;
+      }
+
+      .button-row,
+      .mini-grid,
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .two-col-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="layout">
+    <aside id="ui" class="panel">
+      <div class="hero">
+        <h1>Q-learning i Double Q-Learning w labiryncie</h1>
+        <p class="subtle">Symulacja porównuje tablicowy Q-learning z eksploracją sterowaną strategiami. Możesz
+          obserwować wpływ polityki eksploracji, śladów kwalifikowalności λ, aproksymacji funkcji wartości oraz
+          złączenie dwóch estymatorów Q w Double Q-Learning. Dostępne strategie obejmują ε-greedy (klasyczny i dynamiczny z różnymi typami decay), Softmax, UCB, Optimistic initialization, NoisyNet oraz hybrydę UCB + ε-greedy.</p>
+      </div>
+
+      <div class="status-grid">
+        <div class="metric"><span>Epizod</span><b id="episodeVal">0</b></div>
+        <div class="metric"><span>Agenci</span><b id="populationVal">100</b></div>
+        <div class="metric"><span>Tryb uczenia</span><b id="stateBadge">Standard Q</b></div>
+        <div class="metric"><span>Strategia</span><b id="strategyBadge">ε-greedy</b></div>
+        <div class="metric"><span>Parametr eksploracji</span><b id="exploreVal">ε = 0.350</b></div>
+        <div class="metric"><span>Najlepszy wynik</span><b id="bestVal">—</b></div>
+        <div class="metric"><span>Skuteczność</span><b id="successVal">0%</b></div>
+        <div class="metric"><span>Średnia nagroda</span><b id="avgRewardVal">0.00</b></div>
+      </div>
+
+      <section class="section-card">
+        <h2>Tryb double Q</h2>
+        <div class="toggle-line">
+          <span class="toggle-badge badge double-badge">dwa estymatory</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="doubleQ" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span id="doubleQLabel">Wyłączone</span>
+          <span class="badge reset-q">reset Q</span>
+        </div>
+        <p class="subtle" style="margin-top:6px;">Włączenie Double Q-Learning tworzy dwa niezależne estymatory Qᴬ i Qᴮ,
+          co redukuje przeuczenie szacowań wartości akcji. Kliknięcie przełącza między trybami Standard Q (1 estymator)
+          i Double Q (2 estymatory).</p>
+      </section>
+
+      <section class="section-card">
+        <h2>Środowisko i uczenie</h2>
+
+        <div class="control-group">
+          <label for="cellSize">Rozmiar komórki siatki
+            <span class="badge reset-q">reset Q + epizodów</span>
+          </label>
+          <input id="cellSize" type="range" min="10" max="40" step="1" value="20">
+          <div class="value-line">Wartość: <b id="cellSizeOut">20 px</b></div>
+        </div>
+
+        <div class="control-group">
+          <label for="alpha">Alpha (α)
+            <span class="badge rt">real-time</span>
+          </label>
+          <input id="alpha" type="range" min="1" max="60" step="1" value="22">
+          <div class="value-line">Wartość: <b id="alphaOut">0.22</b></div>
+        </div>
+
+        <div class="control-group">
+          <label for="gamma">Gamma (γ)
+            <span class="badge rt">real-time</span>
+          </label>
+          <input id="gamma" type="range" min="900" max="999" step="1" value="965">
+          <div class="value-line">Wartość: <b id="gammaOut">0.965</b></div>
+        </div>
+
+        <div class="control-group">
+          <label for="speed">Prędkość agenta
+            <span class="badge rt">real-time</span>
+          </label>
+          <input id="speed" type="range" min="15" max="55" step="1" value="32">
+          <div class="value-line">Wartość: <b id="speedOut">3.2</b></div>
+        </div>
+
+        <div class="note-box">
+          <div class="toggle-line">
+            <input id="tracesEnabled" type="checkbox">
+            <label for="tracesEnabled" style="margin:0;">Eligibility traces λ</label>
+            <span class="badge next">od nast. ep.</span>
+          </div>
+          <div class="control-group" style="margin-bottom:0; margin-top:10px;">
+            <label for="traceLambda">Lambda (λ)
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <input id="traceLambda" type="range" min="0" max="100" step="1" value="70">
+            <div class="value-line">Wartość: <b id="traceLambdaOut">0.70</b></div>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="restartEpisodes" class="button-secondary">Reset epizodów</button>
+          <button id="pauseBtn">Pauza</button>
+          <button id="resetKnowledge" class="button-danger">Reset Q</button>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <h2>Strategia eksploracji</h2>
+
+        <div class="control-group">
+          <label for="strategy">Wybór strategii
+            <span class="badge reset-ep">reset epizodów</span>
+          </label>
+          <select id="strategy">
+            <option value="epsilon_dynamic">ε-greedy z dynamicznym ε</option>
+            <option value="epsilon">ε-greedy klasyczny</option>
+            <option value="softmax">Softmax / Boltzmann</option>
+            <option value="optimistic">Optimistic Q-initialization</option>
+            <option value="ucb">UCB</option>
+            <option value="noisy">NoisyNet-style</option>
+            <option value="hybrid">Hybrydowa (UCB + ε-greedy)</option>
+          </select>
+        </div>
+
+        <div class="section-card strategy-panel" data-strategy="epsilon_dynamic">
+          <h3>ε-greedy dynamiczne</h3>
+          <div class="control-group">
+            <label for="epsDecayType">Typ decay ε
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <select id="epsDecayType">
+              <option value="exponential">Exponential</option>
+              <option value="linear">Linear</option>
+              <option value="inverse">Inverse (1/t)</option>
+              <option value="cosine">Cosine annealing</option>
+            </select>
+          </div>
+          <div class="control-group">
+            <label for="epsStart">ε start
+              <span class="badge rt">real-time</span>
+            </label>
+            <input id="epsStart" type="range" min="2" max="80" step="1" value="35">
+            <div class="value-line">Wartość: <b id="epsStartOut">0.35</b></div>
+          </div>
+          <div class="control-group">
+            <label for="epsMin">ε min
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <input id="epsMin" type="range" min="1" max="40" step="1" value="2">
+            <div class="value-line">Wartość: <b id="epsMinOut">0.02</b></div>
+          </div>
+          <div class="control-group">
+            <label for="epsDecay">Decay ε
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <input id="epsDecay" type="range" min="900" max="999" step="1" value="992">
+            <div class="value-line">Wartość: <b id="epsDecayOut">0.992</b></div>
+          </div>
+          <div class="control-group">
+            <label for="epsBoost">Boost przy stagnacji
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <input id="epsBoost" type="range" min="0" max="30" step="1" value="8">
+            <div class="value-line">Wartość: <b id="epsBoostOut">0.08</b></div>
+          </div>
+        </div>
+
+        <div class="section-card strategy-panel hidden-panel" data-strategy="epsilon">
+          <h3>ε-greedy klasyczny</h3>
+          <div class="control-group">
+            <label for="epsFixed">Epsilon ε
+              <span class="badge rt">real-time</span>
+            </label>
+            <input id="epsFixed" type="range" min="1" max="50" step="1" value="10">
+            <div class="value-line">Wartość: <b id="epsFixedOut">0.10</b></div>
+          </div>
+        </div>
+
+        <div class="section-card strategy-panel hidden-panel" data-strategy="softmax">
+          <h3>Softmax / Boltzmann</h3>
+          <div class="control-group">
+            <label for="tempStart">Temperatura τ start
+              <span class="badge rt">real-time</span>
+            </label>
+            <input id="tempStart" type="range" min="10" max="300" step="1" value="125">
+            <div class="value-line">Wartość: <b id="tempStartOut">1.25</b></div>
+          </div>
+          <div class="control-group">
+            <label for="tempMin">Temperatura τ min
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <input id="tempMin" type="range" min="5" max="150" step="1" value="18">
+            <div class="value-line">Wartość: <b id="tempMinOut">0.18</b></div>
+          </div>
+          <div class="control-group">
+            <label for="tempDecay">Decay τ
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <input id="tempDecay" type="range" min="900" max="999" step="1" value="993">
+            <div class="value-line">Wartość: <b id="tempDecayOut">0.993</b></div>
+          </div>
+        </div>
+
+        <div class="section-card strategy-panel hidden-panel" data-strategy="optimistic">
+          <h3>Optimistic Q-initialization</h3>
+          <div class="control-group">
+            <label for="optimisticInit">Optymistyczne Q₀
+              <span class="badge reset-q">reset Q + epizodów</span>
+            </label>
+            <input id="optimisticInit" type="range" min="10" max="120" step="1" value="30">
+            <div class="value-line">Wartość: <b id="optimisticInitOut">3.0</b></div>
+          </div>
+          <div class="value-line">Strategia działa w trybie tablicowym. Wysokie Q₀ wymusza eksplorację bez dużego ε.
+          </div>
+        </div>
+
+        <div class="section-card strategy-panel hidden-panel" data-strategy="ucb">
+          <h3>Upper Confidence Bound</h3>
+          <div class="control-group">
+            <label for="ucbC">Stała eksploracji c
+              <span class="badge rt">real-time</span>
+            </label>
+            <input id="ucbC" type="range" min="10" max="400" step="1" value="140">
+            <div class="value-line">Wartość: <b id="ucbCOut">1.40</b></div>
+          </div>
+        </div>
+
+        <div class="section-card strategy-panel hidden-panel" data-strategy="noisy">
+          <h3>NoisyNet-style</h3>
+          <div class="control-group">
+            <label for="noisySigma">σ start
+              <span class="badge rt">real-time</span>
+            </label>
+            <input id="noisySigma" type="range" min="2" max="150" step="1" value="55">
+            <div class="value-line">Wartość: <b id="noisySigmaOut">0.55</b></div>
+          </div>
+          <div class="control-group">
+            <label for="noisySigmaMin">σ min
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <input id="noisySigmaMin" type="range" min="1" max="80" step="1" value="5">
+            <div class="value-line">Wartość: <b id="noisySigmaMinOut">0.05</b></div>
+          </div>
+          <div class="control-group">
+            <label for="noisySigmaDecay">Decay σ
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <input id="noisySigmaDecay" type="range" min="900" max="999" step="1" value="996">
+            <div class="value-line">Wartość: <b id="noisySigmaDecayOut">0.996</b></div>
+          </div>
+        </div>
+
+        <div class="section-card strategy-panel hidden-panel" data-strategy="hybrid">
+          <h3>Hybrydowa (UCB + ε-greedy)</h3>
+          <div class="control-group">
+            <label for="hybridUcbC">Parametr c UCB
+              <span class="badge reset-q">reset Q</span>
+            </label>
+            <input id="hybridUcbC" type="range" min="5" max="500" step="5" value="150">
+            <div class="value-line">Wartość: <b id="hybridUcbCOut">1.50</b></div>
+          </div>
+          <div class="control-group">
+            <label for="hybridEps">Epsilon ε
+              <span class="badge rt">real-time</span>
+            </label>
+            <input id="hybridEps" type="range" min="1" max="50" step="1" value="10">
+            <div class="value-line">Wartość: <b id="hybridEpsOut">0.10</b></div>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <main id="sim" class="panel">
+      <div class="canvas-wrap">
+        <canvas id="mazeCanvas" width="720" height="520"></canvas>
+        <div class="canvas-hint" id="liveHint">Tryb: Standard Q (1 estymator) • Strategia: ε-greedy</div>
+      </div>
+
+      <div class="mini-grid">
+        <div class="mini-card"><span>Znane stany (Q¹)</span><b id="knowledgeVal1">0 stanów</b></div>
+        <div class="mini-card"><span>Znane stany (Q²)</span><b id="knowledgeVal2">0 stanów</b></div>
+        <div class="mini-card"><span>Razem</span><b id="knowledgeVal">0 stanów</b></div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <canvas id="historyCanvas" width="720" height="170"></canvas>
+        <div class="legend-line">
+          <span class="legend-dot green">skuteczność epizodu</span>
+          <span class="legend-dot amber">średnia nagroda</span>
+          <span class="legend-dot blue">siła eksploracji</span>
+        </div>
+      </div>
+    </main>
+
+    <aside id="docs" class="panel">
+      <div class="doc-block">
+        <h2>Legenda zmian parametrów</h2>
+        <div class="badge-row" style="margin-bottom:10px;">
+          <span class="badge rt">real-time</span>
+          <span class="badge next">od następnego epizodu / batcha</span>
+          <span class="badge reset-ep">reset epizodów</span>
+          <span class="badge reset-q">reset Q</span>
+        </div>
+        <p><b>Real-time</b> oznacza, że parametr wpływa od razu na kolejną decyzję lub aktualizację. <b>Od następnego
+            epizodu</b> oznacza, że bieżący epizod dobiega do końca według starych ustawień. <b>Reset epizodów</b>
+          zeruje licznik epizodów i historię, ale zachowuje wiedzę. <b>Reset Q</b> czyści tablicę Q i również resetuje
+          epizody.</p>
+      </div>
+
+      <div class="doc-block">
+        <h2>Double Q-Learning</h2>
+
+        <h3>Idea Double Q-Learning</h3>
+        <span class="formula">Losowo: Qᴬ ← Qᴬ + αδᴬ  lub  Qᴮ ← Qᴮ + αδᴮ</span>
+        <span class="formula">δᴬ = r + γQᴮ(s', argmaxₐ Qᴬ(s',a)) − Qᴬ(s,a)</span>
+        <span class="formula">δᴮ = r + γQᴬ(s', argmaxₐ Qᴮ(s',a)) − Qᴮ(s,a)</span>
+        <p>Double Q-Learning (Hasselt, 2010) rozwiązuje problem <b>przeuczenia</b> (overestimation) w standardowym
+          Q-learningu. W standardowym podejściu ta sama funkcja Q wybiera i ocenia akcję, co prowadzi do systematycznego
+          zawyżania szacowań wartości szczególnie w stanie początkowym treningu.</p>
+        <p>Rozwiązanie: utrzymuj <b>dwa niezależne estymatory</b> Qᴬ i Qᴮ. Przy każdej aktualizacji losowo wybierz
+          jeden.</p>
+        <ul>
+          <li>Wybór akcji w polityce: <b>średnia arytmetyczna</b> Qᴬ i Qᴮ</li>
+          <li>Aktualizacja Qᴬ: wybierz akcję przez argmax z Qᴬ, ale oceń jej wartość przez <b>Qᴮ</b></li>
+          <li>Aktualizacja Qᴮ: wybierz akcję przez argmax z Qᴮ, ale oceń jej wartość przez <b>Qᴬ</b></li>
+          <li>To decoupling zapewnia umiarkowane, nieobciążone szacowanie (Hasselt, 2010)</li>
+          <li><b>Włączenie Double Q</b> — <span class="badge reset-q">reset Q + epizodów</span></li>
+        </ul>
+      </div>
+
+      <div class="doc-block">
+        <h2>Strategie eksploracji</h2>
+
+        <h3>1. ε-greedy z dynamicznym ε</h3>
+        <span class="formula">a = { losowa akcja z prawd. ε, argmaxₐ Q(s,a) w przeciwnym razie }</span>
+        <p>Dodany został harmonogram eksploracji z minimalnym ε i wzmocnieniem przy stagnacji. Dzięki temu polityka może
+          znów zwiększyć eksplorację, gdy skuteczność epizodów spada.</p>
+        <p>Dostępne typy decay: <b>Linear</b> (ε = ε₀ - k·t), <b>Exponential</b> (ε = ε₀ · decayᵗ), <b>Inverse</b> (ε = ε₀ / (1 + k·t)), <b>Cosine annealing</b> (ε = ε_min + ½(ε₀-ε_min)(1+cos(πt/T))).</p>
+        <ul>
+          <li><b>Typ decay ε</b> — <span class="badge next">od nast. ep.</span></li>
+          <li><b>ε start</b> — <span class="badge rt">real-time</span></li>
+          <li><b>ε min, decay, boost</b> — <span class="badge next">od nast. ep.</span></li>
+        </ul>
+
+        <h3>1.1. ε-greedy klasyczny</h3>
+        <span class="formula">a = { losowa akcja z prawd. ε, argmaxₐ Q(s,a) w przeciwnym razie }</span>
+        <p>Podstawowa strategia ε-greedy bez dynamicznego zmniejszania ε. Stała wartość eksploracji.</p>
+        <ul>
+          <li><b>ε</b> — <span class="badge rt">real-time</span></li>
+        </ul>
+
+        <h3>2. Softmax / Boltzmann</h3>
+        <span class="formula">P(a|s) = exp(Q(s,a)/τ) / Σᵢ exp(Q(s,i)/τ)</span>
+        <p>Im wyższa temperatura <b>τ</b>, tym bardziej "miękki" i eksploracyjny wybór. Gdy τ maleje, polityka coraz
+          częściej wybiera najlepsze akcje.</p>
+        <ul>
+          <li><b>τ start</b> — <span class="badge rt">real-time</span></li>
+          <li><b>τ min, decay</b> — <span class="badge next">od nast. ep.</span></li>
+        </ul>
+
+        <h3>3. Optimistic Q-initialization</h3>
+        <span class="formula">Q₀(s,a) = stała dodatnia &gt; 0</span>
+        <p>Nowe stany otrzymują zawyżone początkowe wartości, więc agent początkowo "wierzy", że nieodwiedzone akcje są
+          opłacalne. To działa jak eksploracja bez dużego ε. Ta strategia jest dostępna tylko dla tablicowego
+          Q-learningu.</p>
+        <ul>
+          <li><b>Q₀</b> — <span class="badge reset-q">reset Q + epizodów</span></li>
+          <li><b>Zmiana strategii na/z optimistic</b> — <span class="badge reset-q">reset Q + epizodów</span></li>
+        </ul>
+
+        <h3>4. UCB</h3>
+        <span class="formula">UCB(s,a) = Q(s,a) + c · √( ln(N(s)+1) / (N(s,a)+1) )</span>
+        <p>Składnik ufności premiuje rzadko wybierane akcje. Gdy licznik odwiedzin rośnie, bonus eksploracyjny maleje i
+          polityka przechodzi do eksploatacji.</p>
+        <ul>
+          <li><b>c</b> — <span class="badge rt">real-time</span></li>
+          <li><b>Zmiana strategii na UCB</b> — <span class="badge reset-ep">reset epizodów</span></li>
+        </ul>
+
+        <h3>4.1. Hybrydowa (UCB + ε-greedy)</h3>
+        <span class="formula">UCB(s,a) = Q(s,a) + c · √( ln(N(s)+1) / (N(s,a)+1) )</span>
+        <span class="formula">a = { losowa akcja z prawd. ε, argmaxₐ UCB(s,a) w przeciwnym razie }</span>
+        <p>Kombinacja UCB z ε-greedy. Z prawdopodobieństwem ε wybiera losowo, w przeciwnym razie używa UCB do wyboru akcji.</p>
+        <ul>
+          <li><b>c UCB</b> — <span class="badge reset-q">reset Q</span></li>
+          <li><b>ε</b> — <span class="badge rt">real-time</span></li>
+        </ul>
+
+        <h3>5. NoisyNet-style</h3>
+        <span class="formula">Q̃(s,a) = Q(s,a) + σ · ξ, gdzie ξ ~ N(0,1)</span>
+        <p>Zastosowanie eksploracji typu NoisyNet przez szum Gaussowski dodawany do wartości akcji przy wyborze ruchu.
+          Pozwala to badać przestrzeń bez ręcznie ustawianego ε.</p>
+        <ul>
+          <li><b>σ start</b> — <span class="badge rt">real-time</span></li>
+          <li><b>σ min, decay</b> — <span class="badge next">od nast. ep.</span></li>
+        </ul>
+      </div>
+
+      <div class="doc-block">
+        <h2>Eligibility traces</h2>
+
+        <h3>Eligibility traces λ</h3>
+        <span class="formula">eₜ(s,a) ← γλ eₜ₋₁(s,a), Q ← Q + α · δ · e</span>
+        <p>Dodaje ścieżki nagród λ do aktualizacji tablicowego Q-learningu. Przyspieszają propagację błędu TD do
+          wcześniejszych stanów. W tej implementacji są to ślady zastępujące (replacing traces) z czyszczeniem przy
+          przejściu niezgodnym z polityką zachłanną.</p>
+        <ul>
+          <li><b>Włączenie traces</b> — <span class="badge next">od nast. ep.</span></li>
+          <li><b>Lambda λ</b> — <span class="badge next">od nast. ep.</span></li>
+        </ul>
+      </div>
+
+      <div class="doc-block">
+        <h2>Wpływ pozostałych parametrów</h2>
+        <ul class="two-col-list">
+          <li><b>Rozmiar komórki</b> — reset Q, bo zmienia dyskretyzację stanu.</li>
+          <li><b>Alpha α, Gamma γ</b> — działają natychmiast.</li>
+          <li><b>Lambda λ</b> — od następnego epizodu.</li>
+          <li><b>Prędkość</b> — natychmiast na ruch agentów.</li>
+          <li><b>Reset epizodów</b> — czyści historię, zachowuje wiedzę Q.</li>
+          <li><b>Reset Q</b> — czyści wiedzę i resetuje epizody.</li>
+        </ul>
+      </div>
+      <div class="doc-block">
+        <h2>Co to jest Q-learning?</h2>
+        <p>Q‑learning to algorytm uczenia ze wzmocnieniem (Reinforcement Learning, RL), który uczy się optymalnej polityki działania w środowisku metodą prób i błędów, bez znajomości modelu środowiska. Kluczowym elementem jest funkcja Q(s, a), która ocenia „jakość” wykonania akcji a w stanie s. Algorytm aktualizuje tę funkcję na podstawie nagród i przewidywanej wartości przyszłych stanów.</p>
+
+        <h2>🕰️ Historyczne tło powstania Q‑learningu</h2>
+
+        <h3>1.1. Korzenie: Markowowskie procesy decyzyjne (MDP)</h3>
+        <p>Podstawy teoretyczne sięgają lat 50. i 60., kiedy powstała teoria Markov Decision Processes (Bellman, Howard). Bellman wprowadził słynne równanie:</p>
+        <span class="formula">V(s) = maxₐ [R(s,a) + γ ∑_{s′} P(s′|s,a) V(s′)]</span>
+        <p>To fundament dynamicznego programowania.</p>
+
+        <h3>1.2. Problem: dynamiczne programowanie wymaga znajomości modelu</h3>
+        <p>W praktyce często nie znamy:</p>
+        <ul>
+          <li>prawdopodobieństw przejść P(s′|s,a),</li>
+          <li>funkcji nagrody R(s,a).</li>
+        </ul>
+        <p>Potrzebny był algorytm, który uczy się optymalnej polityki bez modelu.</p>
+
+        <h3>1.3. Przełom: Watkins (1989)</h3>
+        <p>Christopher Watkins w doktoracie z 1989 r. zaproponował Q‑learning – algorytm, który:</p>
+        <ul>
+          <li>nie wymaga modelu środowiska,</li>
+          <li>uczy się optymalnej polityki off‑policy,</li>
+          <li>gwarantuje zbieżność do optymalnej funkcji Q przy pewnych warunkach.</li>
+        </ul>
+        <p>To był przełom, bo RL stało się praktyczne.</p>
+
+        <h2>⚙️ Na czym dokładnie polega Q‑learning</h2>
+
+        <h3>2.1. Funkcja Q</h3>
+        <p>Q‑learning uczy funkcji:</p>
+        <span class="formula">Q(s,a) = oczekiwana suma zdyskontowanych nagród po wykonaniu akcji a w stanie s.</span>
+
+        <h3>2.2. Reguła aktualizacji</h3>
+        <p>Kluczowy wzór Watkinsa:</p>
+        <span class="formula">Q(s,a) ← Q(s,a) + α [r + γ max_{a′} Q(s′,a′) − Q(s,a)]</span>
+        <p>Interpretacja:</p>
+        <ul>
+          <li>r – nagroda za przejście,</li>
+          <li>γ – współczynnik dyskontowania przyszłych nagród,</li>
+          <li>α – tempo uczenia,</li>
+          <li>max Q(s', a') – najlepsza przewidywana wartość w kolejnym stanie.</li>
+        </ul>
+
+        <h3>2.3. Dlaczego to działa</h3>
+        <p>Aktualizacja jest próbą przybliżenia równania Bellmana:</p>
+        <span class="formula">Q* = T Q*</span>
+        <p>gdzie operator Bellmana jest kontrakcją → iteracyjne stosowanie prowadzi do zbieżności.</p>
+
+        <h3>2.4. Charakter algorytmu</h3>
+        <ul>
+          <li>off‑policy – uczy się optymalnej polityki niezależnie od polityki eksploracji (np. ε‑greedy),</li>
+          <li>model‑free – nie potrzebuje znajomości dynamiki środowiska,</li>
+          <li>tablicowy – klasyczna wersja przechowuje Q w tabeli.</li>
+        </ul>
+
+        <h2>🔍 Przykład działania krok po kroku</h2>
+        <ol>
+          <li>Agent obserwuje stan s.</li>
+          <li>Wybiera akcję a (np. ε‑greedy).</li>
+          <li>Otrzymuje nagrodę r i przechodzi do stanu s′.</li>
+          <li>Aktualizuje Q(s,a) według wzoru.</li>
+          <li>Powtarza proces.</li>
+        </ol>
+        <p>Po wielu epizodach Q(s,a) zbiega do wartości optymalnych.</p>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ============================================================
+      // KONSTANTY
+      // ============================================================
+      const W = 720;
+      const H = 520;
+      const POP_SIZE = 100;
+      const STEP_LIMIT = 2600;
+      const REWARD_GOAL = 35.0;
+      const PENALTY_STEP = -0.018;
+      const PENALTY_WALL = -10.0;
+      const PENALTY_TIMEOUT = -4.0;
+      const SHAPING_FACTOR = 0.12;
+      const ACTIONS = [
+        { dx: 0, dy: -1 },
+        { dx: 0, dy: 1 },
+        { dx: -1, dy: 0 },
+        { dx: 1, dy: 0 }
+      ];
+
+      const goal = { x: 50, y: H - 50, r: 18 };
+      const start = { x: W - 70, y: 60 };
+
+      const walls = [
+        { x: 0, y: 0, w: W, h: 20 },
+        { x: 0, y: H - 20, w: W, h: 20 },
+        { x: 0, y: 0, w: 20, h: H },
+        { x: W - 20, y: 0, w: 20, h: H },
+        { x: 120, y: 80, w: 480, h: 20 },
+        { x: 120, y: 80, w: 20, h: 300 },
+        { x: 120, y: 360, w: 400, h: 20 },
+        { x: 500, y: 140, w: 20, h: 240 },
+        { x: 260, y: 140, w: 260, h: 20 },
+        { x: 260, y: 200, w: 20, h: 160 },
+        { x: 320, y: 260, w: 180, h: 20 }
+      ];
+
+      // ============================================================
+      // KONFIGURACJA
+      // ============================================================
+      const config = {
+        popSize: POP_SIZE,
+        cellSize: 20,
+        alpha: 0.22,
+        gamma: 0.965,
+        speed: 3.2,
+        strategy: 'epsilon_dynamic',
+        tracesEnabled: false,
+        traceLambda: 0.70,
+        // Double Q-Learning nowy parametr
+        doubleQ: false,
+        // ε-greedy
+        epsDecayType: 'exponential',
+        epsStart: 0.35,
+        epsMin: 0.02,
+        epsDecay: 0.992,
+        epsBoost: 0.08,
+        epsFixed: 0.10,
+        // Softmax
+        tempStart: 1.25,
+        tempMin: 0.18,
+        tempDecay: 0.993,
+        // Optimistic
+        optimisticInit: 3.0,
+        // UCB
+        ucbC: 1.40,
+        // NoisyNet
+        noisySigma: 0.55,
+        noisySigmaMin: 0.05,
+        noisySigmaDecay: 0.996,
+        // Hybrid
+        hybridUcbC: 1.50,
+        hybridEps: 0.10
+      };
+
+      // ============================================================
+      // RUNTIME STATE
+      // ============================================================
+      const runtime = {
+        paused: false,
+        episode: 0,
+        bestSteps: null,
+        lastSuccessRate: 0,
+        lastAvgReward: 0,
+        epsilonCurrent: config.epsStart,
+        temperatureCurrent: config.tempStart,
+        noiseSigmaCurrent: config.noisySigma,
+        history: []
+      };
+
+      // Double Q-Learning: dwie tablice Q
+      const Q = new Map();       // Q_A (główna)
+      const Q_B = new Map();     // Q_B (drugi estymator)
+      const visitCounts = new Map();
+      let agents = [];
+
+      // ============================================================
+      // FUNKCJE POMOCNICZE
+      // ============================================================
+      const $ = (id) => document.getElementById(id);
+
+      function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+      function randInt(max) { return Math.floor(Math.random() * max); }
+
+      function gaussianRandom() {
+        let u = 0, v = 0;
+        while (u === 0) u = Math.random();
+        while (v === 0) v = Math.random();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+      }
+
+      function maxArray(arr) {
+        let m = arr[0];
+        for (let i = 1; i < arr.length; i++) {
+          if (arr[i] > m) m = arr[i];
+        }
+        return m;
+      }
+
+      function argmaxRandomTie(arr) {
+        let best = -Infinity;
+        const ids = [];
+        for (let i = 0; i < arr.length; i++) {
+          const v = arr[i];
+          if (v > best + 1e-12) {
+            best = v;
+            ids.length = 0;
+            ids.push(i);
+          } else if (Math.abs(v - best) <= 1e-12) {
+            ids.push(i);
+          }
+        }
+        return ids[randInt(ids.length)];
+      }
+
+      function isGreedyAction(values, action) {
+        const best = maxArray(values);
+        return values[action] >= best - 1e-9;
+      }
+
+      function softmax(values, temperature) {
+        const t = Math.max(0.05, temperature);
+        const maxV = maxArray(values);
+        const probs = new Float32Array(values.length);
+        let sum = 0;
+        for (let i = 0; i < values.length; i++) {
+          const e = Math.exp((values[i] - maxV) / t);
+          probs[i] = e;
+          sum += e;
+        }
+        if (sum <= 0) {
+          const fallback = 1 / values.length;
+          for (let i = 0; i < probs.length; i++) probs[i] = fallback;
+          return probs;
+        }
+        for (let i = 0; i < probs.length; i++) probs[i] /= sum;
+        return probs;
+      }
+
+      function sampleDiscrete(probs) {
+        const r = Math.random();
+        let acc = 0;
+        for (let i = 0; i < probs.length; i++) {
+          acc += probs[i];
+          if (r <= acc) return i;
+        }
+        return probs.length - 1;
+      }
+
+      function strategyLabel(strategy) {
+        switch (strategy) {
+          case 'epsilon_dynamic': return 'ε-greedy';
+          case 'epsilon': return 'ε-greedy klasyczny';
+          case 'softmax': return 'Softmax';
+          case 'optimistic': return 'Optimistic';
+          case 'ucb': return 'UCB';
+          case 'noisy': return 'NoisyNet';
+          case 'hybrid': return 'Hybrydowa (UCB + ε)';
+          default: return strategy;
+        }
+      }
+
+      // ============================================================
+      // DOUBLE Q-LEARNING - OBSŁUGA DWÓCH ESTYMATORÓW
+      // ============================================================
+
+      function resetExplorationSchedulers() {
+        runtime.epsilonCurrent = config.epsStart;
+        runtime.temperatureCurrent = config.tempStart;
+        runtime.noiseSigmaCurrent = config.noisySigma;
+      }
+
+      function getInitialQValue() {
+        if (config.strategy === 'optimistic') {
+          return config.optimisticInit;
+        }
+        return 0;
+      }
+
+      // Pobierz lub utwórz wartości Q dla danego stanu z określonej tablicy
+      function ensureQ(qMap, key) {
+        if (!qMap.has(key)) {
+          qMap.set(key, new Float32Array(4).fill(getInitialQValue()));
+        }
+        return qMap.get(key);
+      }
+
+      // Średnia z Q_A i Q_B do wyboru akcji (gdy Double Q jest włączone)
+      function getAveragedQ(key) {
+        if (!config.doubleQ) {
+          return ensureQ(Q, key);
+        }
+        const qa = ensureQ(Q, key);
+        const qb = ensureQ(Q_B, key);
+        const avg = new Float32Array(4);
+        for (let i = 0; i < 4; i++) {
+          avg[i] = (qa[i] + qb[i]) * 0.5;
+        }
+        return avg;
+      }
+
+      // Max z konkretnej tablicy Q
+      function maxQ(qMap, key) {
+        return maxArray(ensureQ(qMap, key));
+      }
+
+      // Max ze średniej (Double Q) lub z Q (standard)
+      function maxQForSelection(key) {
+        return maxArray(getAveragedQ(key));
+      }
+
+      function ensureCounts(key) {
+        if (!visitCounts.has(key)) visitCounts.set(key, new Uint32Array(4));
+        return visitCounts.get(key);
+      }
+
+      function ensureTrace(traces, key) {
+        if (!traces.has(key)) traces.set(key, new Float32Array(4));
+        return traces.get(key);
+      }
+
+      // ============================================================
+      // AKTUALIZACJA Q - STANDARD vs DOUBLE
+      // ============================================================
+
+      // Standard Q-Learning: Q(s,a) ← Q(s,a) + α[r + γ·maxₐ'Q(s',a') − Q(s,a)]
+      function standardQUpdate(sKey, a, r, sNextKey, terminal) {
+        const qVals = ensureQ(Q, sKey);
+        const target = terminal ? r : r + config.gamma * maxQ(Q, sNextKey);
+        qVals[a] += config.alpha * (target - qVals[a]);
+      }
+
+      // Double Q-Learning z losowym wyborem estymatora (Hasselt, 2010)
+      function doubleQUpdate(sKey, a, r, sNextKey, terminal) {
+        if (Math.random() < 0.5) {
+          // Aktualizuj Q_A: wybierz akcję przez argmax z Q_A, ale oceń przez Q_B
+          const qA = ensureQ(Q, sKey);
+          if (terminal) {
+            qA[a] += config.alpha * (r - qA[a]);
+          } else {
+            const nextQA = ensureQ(Q, sNextKey);
+            const nextQB = ensureQ(Q_B, sNextKey);
+            const greedyAction = argmaxRandomTie(nextQA); // argmax z Q_A
+            const target = r + config.gamma * nextQB[greedyAction]; // ale ewaluacja przez Q_B
+            qA[a] += config.alpha * (target - qA[a]);
+          }
+        } else {
+          // Aktualizuj Q_B: wybierz akcję przez argmax z Q_B, ale oceń przez Q_A
+          const qB = ensureQ(Q_B, sKey);
+          if (terminal) {
+            qB[a] += config.alpha * (r - qB[a]);
+          } else {
+            const nextQB = ensureQ(Q_B, sNextKey);
+            const nextQA = ensureQ(Q, sNextKey);
+            const greedyAction = argmaxRandomTie(nextQB); // argmax z Q_B
+            const target = r + config.gamma * nextQA[greedyAction]; // ale ewaluacja przez Q_A
+            qB[a] += config.alpha * (target - qB[a]);
+          }
+        }
+      }
+
+      // Główna funkcja aktualizacji — decyduje standard czy double
+      function qUpdateMain(sKey, a, r, sNextKey, terminal) {
+        if (config.doubleQ) {
+          doubleQUpdate(sKey, a, r, sNextKey, terminal);
+        } else {
+          standardQUpdate(sKey, a, r, sNextKey, terminal);
+        }
+      }
+
+      // Standard Eligibility Traces
+      function tracesUpdateStandard(agent, sKey, a, r, sNextKey, terminal, greedyChosen) {
+        const qVals = ensureQ(Q, sKey);
+        const nextMax = terminal ? 0 : maxQ(Q, sNextKey);
+        const delta = r + config.gamma * nextMax - qVals[a];
+        const trace = ensureTrace(agent.traces, sKey);
+        trace[a] = 1;
+
+        const stale = [];
+        for (const [key, arr] of agent.traces.entries()) {
+          const valArr = ensureQ(Q, key);
+          let alive = false;
+          for (let i = 0; i < 4; i++) {
+            if (arr[i] > 1e-5) {
+              valArr[i] += config.alpha * delta * arr[i];
+              arr[i] *= config.gamma * config.traceLambda;
+              if (arr[i] > 1e-4) alive = true;
+              else arr[i] = 0;
+            }
+          }
+          if (!alive) stale.push(key);
+        }
+        for (const key of stale) agent.traces.delete(key);
+        if (terminal || !greedyChosen) agent.traces.clear();
+      }
+
+      // Double Q Eligibility Traces
+      function tracesUpdateDouble(agent, sKey, a, r, sNextKey, terminal, greedyChosen) {
+        const useA = Math.random() < 0.5;
+        const targetMap = useA ? Q : Q_B;
+        const evalMap = useA ? Q_B : Q;
+        const targetVal = ensureQ(targetMap, sKey);
+        let delta;
+
+        if (terminal) {
+          delta = r - targetVal[a];
+        } else {
+          const nextTarget = ensureQ(targetMap, sNextKey);
+          const nextEval = ensureQ(evalMap, sNextKey);
+          const greedyAction = argmaxRandomTie(nextTarget);
+          delta = r + config.gamma * nextEval[greedyAction] - targetVal[a];
+        }
+
+        const trace = useA
+          ? ensureTrace(agent.traces, sKey)
+          : ensureTrace(agent.tracesB, sKey);
+        trace[a] = 1;
+
+        const staleA = [];
+        for (const [key, arr] of agent.traces.entries()) {
+          const valArr = ensureQ(Q, key);
+          let alive = false;
+          for (let i = 0; i < 4; i++) {
+            if (arr[i] > 1e-5) {
+              valArr[i] += config.alpha * delta * arr[i];
+              arr[i] *= config.gamma * config.traceLambda;
+              if (arr[i] > 1e-4) alive = true;
+              else arr[i] = 0;
+            }
+          }
+          if (!alive) staleA.push(key);
+        }
+        for (const key of staleA) agent.traces.delete(key);
+
+        const staleB = [];
+        for (const [key, arr] of agent.tracesB.entries()) {
+          const valArr = ensureQ(Q_B, key);
+          let alive = false;
+          for (let i = 0; i < 4; i++) {
+            if (arr[i] > 1e-5) {
+              valArr[i] += config.alpha * delta * arr[i];
+              arr[i] *= config.gamma * config.traceLambda;
+              if (arr[i] > 1e-4) alive = true;
+              else arr[i] = 0;
+            }
+          }
+          if (!alive) staleB.push(key);
+        }
+        for (const key of staleB) agent.tracesB.delete(key);
+
+        if (terminal || !greedyChosen) {
+          agent.traces.clear();
+          agent.tracesB.clear();
+        }
+      }
+
+      // Główna funkcja traces
+      function tracesUpdate(agent, sKey, a, r, sNextKey, terminal, greedyChosen) {
+        if (config.doubleQ) {
+          tracesUpdateDouble(agent, sKey, a, r, sNextKey, terminal, greedyChosen);
+        } else {
+          tracesUpdateStandard(agent, sKey, a, r, sNextKey, terminal, greedyChosen);
+        }
+      }
+
+      // ============================================================
+      // WYBÓR AKCJI I STRATEGIE
+      // ============================================================
+
+      function getActionValues(rep) {
+        // W trybie Double Q używamy średniej, w standard Q — zwykłej Q
+        return getAveragedQ(rep.key);
+      }
+
+      function pickAction(rep) {
+        const baseValues = getActionValues(rep);
+
+        if (config.strategy === 'epsilon_dynamic') {
+          if (Math.random() < runtime.epsilonCurrent) {
+            return { action: randInt(4), baseValues };
+          }
+          return { action: argmaxRandomTie(baseValues), baseValues };
+        }
+
+        if (config.strategy === 'epsilon') {
+          if (Math.random() < config.epsFixed) {
+            return { action: randInt(4), baseValues };
+          }
+          return { action: argmaxRandomTie(baseValues), baseValues };
+        }
+
+        if (config.strategy === 'softmax') {
+          const probs = softmax(baseValues, runtime.temperatureCurrent);
+          return { action: sampleDiscrete(probs), baseValues };
+        }
+
+        if (config.strategy === 'optimistic') {
+          return { action: argmaxRandomTie(baseValues), baseValues };
+        }
+
+        if (config.strategy === 'ucb') {
+          const counts = ensureCounts(rep.countKey);
+          let total = 0;
+          for (let i = 0; i < 4; i++) total += counts[i];
+          const scores = new Float32Array(4);
+          const bonusBase = config.ucbC * Math.sqrt(Math.log(total + 2));
+          for (let i = 0; i < 4; i++) {
+            scores[i] = baseValues[i] + bonusBase / Math.sqrt(counts[i] + 1);
+          }
+          return { action: argmaxRandomTie(scores), baseValues };
+        }
+
+        if (config.strategy === 'hybrid') {
+          const counts = ensureCounts(rep.countKey);
+          let total = 0;
+          for (let i = 0; i < 4; i++) total += counts[i];
+          const scores = new Float32Array(4);
+          const bonusBase = config.hybridUcbC * Math.sqrt(Math.log(total + 2));
+          for (let i = 0; i < 4; i++) {
+            scores[i] = baseValues[i] + bonusBase / Math.sqrt(counts[i] + 1);
+          }
+          if (Math.random() < config.hybridEps) {
+            return { action: randInt(4), baseValues };
+          }
+          return { action: argmaxRandomTie(scores), baseValues };
+        }
+
+        // NoisyNet-style
+        const noisyScores = new Float32Array(4);
+        for (let i = 0; i < 4; i++) {
+          noisyScores[i] = baseValues[i] + runtime.noiseSigmaCurrent * gaussianRandom();
+        }
+        return { action: argmaxRandomTie(noisyScores), baseValues };
+      }
+
+      function getExplorationMeta() {
+        switch (config.strategy) {
+          case 'epsilon_dynamic':
+            return { text: 'ε = ' + runtime.epsilonCurrent.toFixed(3), norm: clamp(runtime.epsilonCurrent, 0, 1) };
+          case 'epsilon':
+            return { text: 'ε = ' + config.epsFixed.toFixed(3), norm: clamp(config.epsFixed, 0, 1) };
+          case 'softmax':
+            return { text: 'τ = ' + runtime.temperatureCurrent.toFixed(3), norm: clamp(runtime.temperatureCurrent / 3, 0, 1) };
+          case 'optimistic':
+            return { text: 'Q₀ = ' + config.optimisticInit.toFixed(2), norm: clamp(config.optimisticInit / 8, 0, 1) };
+          case 'ucb':
+            return { text: 'c = ' + config.ucbC.toFixed(2), norm: clamp(config.ucbC / 4, 0, 1) };
+          case 'hybrid':
+            return { text: 'c=' + config.hybridUcbC.toFixed(2) + ' ε=' + config.hybridEps.toFixed(3), norm: clamp(config.hybridEps, 0, 1) };
+          case 'noisy':
+            return { text: 'σ = ' + runtime.noiseSigmaCurrent.toFixed(3), norm: clamp(runtime.noiseSigmaCurrent / 1.5, 0, 1) };
+          default:
+            return { text: '—', norm: 0 };
+        }
+      }
+
+      function advanceExplorationSchedule(successRate) {
+        if (config.strategy === 'epsilon_dynamic') {
+          let t = runtime.episode;
+          let decayFactor;
+          switch (config.epsDecayType) {
+            case 'linear':
+              decayFactor = Math.max(0, 1 - t * 0.001 * (1 - config.epsDecay));
+              break;
+            case 'exponential':
+              decayFactor = Math.pow(config.epsDecay, t);
+              break;
+            case 'inverse':
+              decayFactor = 1 / (1 + t * 0.001 * (1 - config.epsDecay));
+              break;
+            case 'cosine':
+              decayFactor = 0.5 * (1 + Math.cos(Math.PI * t / 1000));
+              break;
+            default:
+              decayFactor = Math.pow(config.epsDecay, t);
+          }
+          let nextEps = config.epsMin + (config.epsStart - config.epsMin) * decayFactor;
+          nextEps += Math.max(0, 0.18 - successRate) * config.epsBoost;
+          runtime.epsilonCurrent = clamp(nextEps, config.epsMin, 0.98);
+        } else if (config.strategy === 'softmax') {
+          runtime.temperatureCurrent = Math.max(config.tempMin, runtime.temperatureCurrent * config.tempDecay);
+        } else if (config.strategy === 'noisy') {
+          runtime.noiseSigmaCurrent = Math.max(config.noisySigmaMin, runtime.noiseSigmaCurrent * config.noisySigmaDecay);
+        }
+      }
+
+      // ============================================================
+      // AGENT
+      // ============================================================
+
+      class Agent {
+        constructor() {
+          this.reset();
+        }
+
+        reset() {
+          this.x = start.x;
+          this.y = start.y;
+          this.r = 4;
+          this.dead = false;
+          this.reached = false;
+          this.steps = 0;
+          this.totalReward = 0;
+          this.traces = new Map();
+          this.tracesB = new Map(); // drugi zestaw traces dla Double Q
+        }
+
+        draw(ctx) {
+          ctx.beginPath();
+          ctx.fillStyle = this.reached ? '#22c55e' : (this.dead ? '#ef4444' : '#f8fafc');
+          ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // ============================================================
+      // ŚRODOWISKO - RYSOWANIE I DETEKCJA KOLIZJI
+      // ============================================================
+
+      const mazeCanvas = $('mazeCanvas');
+      const historyCanvas = $('historyCanvas');
+      const ctx = mazeCanvas.getContext('2d');
+      const histCtx = historyCanvas.getContext('2d');
+
+      function createAgents() {
+        agents = Array.from({ length: config.popSize }, () => new Agent());
+      }
+
+      function clearKnowledge() {
+        Q.clear();
+        Q_B.clear();
+        visitCounts.clear();
+      }
+
+      function resetEpisodesOnly() {
+        runtime.episode = 0;
+        runtime.bestSteps = null;
+        runtime.lastSuccessRate = 0;
+        runtime.lastAvgReward = 0;
+        runtime.history.length = 0;
+        resetExplorationSchedulers();
+        createAgents();
+        updateStatus();
+        drawHistoryChart();
+      }
+
+      function resetKnowledgeAndEpisodes() {
+        clearKnowledge();
+        resetEpisodesOnly();
+      }
+
+      function collides(x, y, r) {
+        for (const w of walls) {
+          const nx = Math.max(w.x, Math.min(x, w.x + w.w));
+          const ny = Math.max(w.y, Math.min(y, w.y + w.h));
+          const dx = x - nx;
+          const dy = y - ny;
+          if (dx * dx + dy * dy <= r * r) return true;
+        }
+        if (x < 24 || x > W - 24 || y < 24 || y > H - 24) return true;
+        return false;
+      }
+
+      function atGoal(x, y) {
+        const dx = x - goal.x;
+        const dy = y - goal.y;
+        return dx * dx + dy * dy <= goal.r * goal.r;
+      }
+
+      function toCell(x, y) {
+        const gx = Math.max(20, Math.min(x, W - 21));
+        const gy = Math.max(20, Math.min(y, H - 21));
+        const cx = Math.floor((gx - 20) / config.cellSize);
+        const cy = Math.floor((gy - 20) / config.cellSize);
+        return { cx, cy, key: cx + ',' + cy };
+      }
+
+      function getStateRep(x, y) {
+        const cell = toCell(x, y);
+        return { key: cell.key, countKey: cell.key };
+      }
+
+      function endEpisode() {
+        const reached = agents.filter(a => a.reached).length;
+        const avgReward = agents.reduce((sum, a) => sum + a.totalReward, 0) / agents.length;
+        const successRate = reached / agents.length;
+        const meta = getExplorationMeta();
+
+        runtime.lastSuccessRate = successRate;
+        runtime.lastAvgReward = avgReward;
+        runtime.history.push({
+          success: successRate,
+          reward: avgReward,
+          explorationNorm: meta.norm
+        });
+        if (runtime.history.length > 160) runtime.history.shift();
+
+        runtime.episode += 1;
+        advanceExplorationSchedule(successRate);
+        for (const agent of agents) agent.reset();
+        updateStatus();
+        drawHistoryChart();
+      }
+
+      // ============================================================
+      // RYSOWANIE
+      // ============================================================
+
+      function drawMaze() {
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, '#0c172b');
+        grad.addColorStop(1, '#08121f');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Siatka komórek
+        ctx.strokeStyle = 'rgba(95, 146, 255, 0.12)';
+        ctx.lineWidth = 1;
+        for (let x = 20; x <= W - 20; x += config.cellSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 20);
+          ctx.lineTo(x, H - 20);
+          ctx.stroke();
+        }
+        for (let y = 20; y <= H - 20; y += config.cellSize) {
+          ctx.beginPath();
+          ctx.moveTo(20, y);
+          ctx.lineTo(W - 20, y);
+          ctx.stroke();
+        }
+
+        // Ściany
+        ctx.fillStyle = '#7f8ea8';
+        for (const w of walls) {
+          ctx.fillRect(w.x, w.y, w.w, w.h);
+        }
+
+        // Cel (piłka)
+        ctx.beginPath();
+        ctx.fillStyle = '#22c55e';
+        ctx.arc(goal.x, goal.y, goal.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(34,197,94,0.55)';
+        ctx.lineWidth = 2;
+        ctx.arc(goal.x, goal.y, goal.r + 9, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Start (gracz)
+        ctx.beginPath();
+        ctx.fillStyle = '#38bdf8';
+        ctx.arc(start.x, start.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(56,189,248,0.5)';
+        ctx.arc(start.x, start.y, 15, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Rysuj heatmapę wartości Q (lekko transparentna)
+        drawQHeatmap();
+
+        // Wizualizacja Double Q: oznaczenie który estymator jest aktualnie aktywny
+        if (config.doubleQ) {
+          drawDoubleQIndicator();
+        }
+      }
+
+      // Heatmapa wartości Q — cieplejsze kolory = wyższe wartości
+      function drawQHeatmap() {
+        const useQ = Q;
+        const cellW = config.cellSize;
+        const cellH = cellW;
+
+        for (const [key, vals] of useQ.entries()) {
+          if (!config.doubleQ) {
+            if (!Q.has(key)) continue;
+          }
+          const maxVal = maxArray(config.doubleQ ? getAveragedQ(key) : vals);
+          if (maxVal <= 0.01) continue;
+
+          const [cx, cy] = key.split(',').map(Number);
+          if (isNaN(cx) || isNaN(cy)) continue;
+
+          const px = 20 + cx * cellW + cellW / 2;
+          const py = 20 + cy * cellH + cellH / 2;
+
+          // Kolor odcienia zielonego/niebieskiego w zależności od wartości
+          const intensity = Math.min(1, maxVal / 15);
+          const circleR = cellW * 0.4 * Math.max(0.2, intensity);
+
+          ctx.beginPath();
+          if (maxVal < 3) {
+            ctx.fillStyle = `rgba(56, 189, 248, ${0.06 + intensity * 0.1})`; // niebieski
+          } else if (maxVal < 10) {
+            ctx.fillStyle = `rgba(34, 197, 94, ${0.08 + intensity * 0.12})`; // zielony
+          } else {
+            ctx.fillStyle = `rgba(167, 139, 250, ${0.08 + intensity * 0.12})`; // fioletowy dla celu
+          }
+          ctx.arc(px, py, circleR, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Wartość liczbowa pokazana w komórce
+          if (config.cellSize >= 16 && intensity > 0.15) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + intensity * 0.35})`;
+            ctx.font = `${Math.max(8, config.cellSize * 0.38)}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(maxVal.toFixed(1), px, py);
+          }
+        }
+      }
+
+      // Wskaźnik Double Q - pokazuje balans między estymatorami
+      function drawDoubleQIndicator() {
+        const totalA = Q.size;
+        const totalB = Q_B.size;
+        const total = totalA + totalB;
+
+        if (total === 0) return;
+
+        // Mały pasek w rogu pokazujący stosunek wag
+        const barW = 80;
+        const barH = 6;
+        const barX = W - barW - 12;
+        const barY = H - 18;
+
+        ctx.fillStyle = 'rgba(10, 22, 42, 0.8)';
+        ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 16);
+        ctx.strokeStyle = 'rgba(90, 141, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX - 2, barY - 2, barW + 4, barH + 16);
+
+        ctx.fillStyle = 'rgba(98, 162, 255, 0.7)';
+        const ratioA = total > 0 ? totalA / total : 0.5;
+        ctx.fillRect(barX, barY, barW * ratioA, barH);
+
+        ctx.fillStyle = 'rgba(167, 139, 250, 0.7)';
+        ctx.fillRect(barX + barW * ratioA, barY, barW * (1 - ratioA), barH);
+
+        ctx.fillStyle = '#9cb0d4';
+        ctx.font = '9px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Qᴬ', barX, barY + barH + 10);
+        ctx.textAlign = 'right';
+        ctx.fillText('Qᴮ', barX + barW, barY + barH + 10);
+      }
+
+      function drawHistoryChart() {
+        const w = historyCanvas.width;
+        const h = historyCanvas.height;
+        histCtx.clearRect(0, 0, w, h);
+        histCtx.fillStyle = '#0a1425';
+        histCtx.fillRect(0, 0, w, h);
+
+        const pad = 26;
+        histCtx.strokeStyle = 'rgba(114, 151, 229, 0.18)';
+        histCtx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+          const y = pad + ((h - pad * 2) * i) / 4;
+          histCtx.beginPath();
+          histCtx.moveTo(pad, y);
+          histCtx.lineTo(w - pad, y);
+          histCtx.stroke();
+        }
+
+        histCtx.fillStyle = '#dbeafe';
+        histCtx.font = '12px Inter, sans-serif';
+        histCtx.textAlign = 'left';
+        histCtx.fillText('Historia epizodów', pad, 16);
+
+        // Separator Double Q historii
+        histCtx.fillStyle = '#a78bfa';
+        histCtx.font = '10px Inter, sans-serif';
+
+        const data = runtime.history.slice(-120);
+        if (!data.length) {
+          histCtx.fillStyle = 'rgba(203, 220, 248, 0.75)';
+          histCtx.fillText('Brak ukończonych epizodów — uruchom symulację i obserwuj skuteczność, nagrodę oraz siłę eksploracji.', pad, h / 2);
+          return;
+        }
+
+        const rewardMin = Math.min(...data.map(d => d.reward));
+        const rewardMax = Math.max(...data.map(d => d.reward));
+        const rewardRange = Math.max(1e-6, rewardMax - rewardMin);
+
+        const xAt = (i) => pad + (data.length === 1 ? 0 : (i / (data.length - 1)) * (w - pad * 2));
+        const yFromNorm = (norm) => h - pad - norm * (h - pad * 2);
+
+        function drawLine(values, color, lineWidth) {
+          histCtx.beginPath();
+          histCtx.lineWidth = lineWidth || 2;
+          histCtx.strokeStyle = color;
+          values.forEach((v, i) => {
+            const x = xAt(i);
+            const y = yFromNorm(clamp(v, 0, 1));
+            if (i === 0) histCtx.moveTo(x, y);
+            else histCtx.lineTo(x, y);
+          });
+          histCtx.stroke();
+        }
+
+        drawLine(data.map(d => d.success), '#22c55e');
+        drawLine(data.map(d => (d.reward - rewardMin) / rewardRange), '#f59e0b');
+        drawLine(data.map(d => d.explorationNorm), '#38bdf8');
+
+        // Etykiety osi Y
+        histCtx.fillStyle = '#7d89a4';
+        histCtx.font = '9px Inter, sans-serif';
+        histCtx.textAlign = 'right';
+        histCtx.fillText('0%', pad - 4, h - pad + 3);
+        histCtx.fillText('50%', pad - 4, (pad + yFromNorm(0.5)) / 2 + 3);
+        histCtx.fillText('100%', pad - 4, pad + 3);
+      }
+
+      // ============================================================
+      // KROK SYMULACJI
+      // ============================================================
+
+      function stepSimulation() {
+        for (const ag of agents) {
+          if (ag.dead || ag.reached) continue;
+
+          const sRep = getStateRep(ag.x, ag.y);
+          const decision = pickAction(sRep);
+          const greedyChosen = isGreedyAction(decision.baseValues, decision.action);
+
+          if (config.strategy === 'ucb') {
+            const counts = ensureCounts(sRep.countKey);
+            counts[decision.action] += 1;
+          }
+
+          const move = ACTIONS[decision.action];
+          const nx = ag.x + move.dx * config.speed;
+          const ny = ag.y + move.dy * config.speed;
+
+          let reward = PENALTY_STEP;
+          let terminal = false;
+          const distBefore = Math.hypot(ag.x - goal.x, ag.y - goal.y);
+
+          if (collides(nx, ny, ag.r)) {
+            reward = PENALTY_WALL;
+            terminal = true;
+            ag.dead = true;
+          } else {
+            ag.x = nx;
+            ag.y = ny;
+            const distAfter = Math.hypot(ag.x - goal.x, ag.y - goal.y);
+            reward += (distBefore - distAfter) * SHAPING_FACTOR;
+            if (atGoal(ag.x, ag.y)) {
+              reward = REWARD_GOAL;
+              terminal = true;
+              ag.reached = true;
+            }
+          }
+
+          ag.steps += 1;
+          if (ag.steps >= STEP_LIMIT && !ag.reached && !terminal) {
+            reward += PENALTY_TIMEOUT;
+            terminal = true;
+            ag.dead = true;
+          }
+
+          const nextRep = getStateRep(ag.x, ag.y);
+
+          if (config.tracesEnabled) {
+            tracesUpdate(ag, sRep.key, decision.action, reward, nextRep.key, terminal, greedyChosen);
+          } else {
+            qUpdateMain(sRep.key, decision.action, reward, nextRep.key, terminal);
+          }
+
+          ag.totalReward += reward;
+          if (ag.reached && (runtime.bestSteps == null || ag.steps < runtime.bestSteps)) {
+            runtime.bestSteps = ag.steps;
+          }
+        }
+
+        if (agents.every(a => a.dead || a.reached)) {
+          endEpisode();
+        }
+      }
+
+      function renderFrame() {
+        drawMaze();
+        if (!runtime.paused) stepSimulation();
+        for (const ag of agents) ag.draw(ctx);
+        updateStatus();
+        requestAnimationFrame(renderFrame);
+      }
+
+      // ============================================================
+      // UI UPDATES
+      // ============================================================
+
+      function updateStatus() {
+        const learningMode = config.doubleQ ? 'Double Q (Qᴬ+Qᴮ)' : 'Standard Q';
+        const estLabel = config.doubleQ ? '2 estymatory' : '1 estymator';
+
+        $('episodeVal').textContent = runtime.episode;
+        $('populationVal').textContent = config.popSize;
+        $('stateBadge').textContent = learningMode;
+        $('strategyBadge').textContent = strategyLabel(config.strategy);
+        $('exploreVal').textContent = getExplorationMeta().text;
+        $('bestVal').textContent = runtime.bestSteps == null ? '—' : runtime.bestSteps + ' kroków';
+        $('successVal').textContent = Math.round(runtime.lastSuccessRate * 100) + '%';
+        $('avgRewardVal').textContent = runtime.lastAvgReward.toFixed(2);
+        $('doubleQLabel').textContent = config.doubleQ ? 'Włączone (' + estLabel + ')' : 'Wyłączone (' + estLabel + ')';
+        $('knowledgeVal1').textContent = Q.size + ' stanów';
+        $('knowledgeVal2').textContent = Q_B.size + ' stanów';
+        $('knowledgeVal').textContent = (Q.size + Q_B.size) + ' stanów';
+        $('pauseBtn').textContent = runtime.paused ? 'Wznów' : 'Pauza';
+
+        $('liveHint').textContent =
+          'Tryb: ' + (config.doubleQ ? 'Double Q (2 est.)' : 'Standard Q (1 est.)') +
+          ' • Strategia: ' + strategyLabel(config.strategy) +
+          ' • ' + getExplorationMeta().text;
+      }
+
+      function renderPanels() {
+        document.querySelectorAll('.strategy-panel').forEach(panel => {
+          panel.classList.toggle('hidden-panel', panel.dataset.strategy !== config.strategy);
+        });
+      }
+
+      function refreshControlOutputs() {
+        $('cellSize').value = config.cellSize;
+        $('cellSizeOut').textContent = config.cellSize + ' px';
+
+        $('alpha').value = Math.round(config.alpha * 100);
+        $('alphaOut').textContent = config.alpha.toFixed(2);
+
+        $('gamma').value = Math.round(config.gamma * 1000);
+        $('gammaOut').textContent = config.gamma.toFixed(3);
+
+        $('speed').value = Math.round(config.speed * 10);
+        $('speedOut').textContent = config.speed.toFixed(1);
+
+        $('strategy').value = config.strategy;
+        $('tracesEnabled').checked = config.tracesEnabled;
+        $('doubleQ').checked = config.doubleQ;
+
+        $('epsStart').value = Math.round(config.epsStart * 100);
+        $('epsStartOut').textContent = config.epsStart.toFixed(2);
+        $('epsMin').value = Math.round(config.epsMin * 100);
+        $('epsMinOut').textContent = config.epsMin.toFixed(2);
+        $('epsDecay').value = Math.round(config.epsDecay * 1000);
+        $('epsDecayOut').textContent = config.epsDecay.toFixed(3);
+        $('epsBoost').value = Math.round(config.epsBoost * 100);
+        $('epsBoostOut').textContent = config.epsBoost.toFixed(2);
+
+        $('epsFixed').value = Math.round(config.epsFixed * 100);
+        $('epsFixedOut').textContent = config.epsFixed.toFixed(2);
+
+        $('epsDecayType').value = config.epsDecayType;
+
+        $('tempStart').value = Math.round(config.tempStart * 100);
+        $('tempStartOut').textContent = config.tempStart.toFixed(2);
+        $('tempMin').value = Math.round(config.tempMin * 100);
+        $('tempMinOut').textContent = config.tempMin.toFixed(2);
+        $('tempDecay').value = Math.round(config.tempDecay * 1000);
+        $('tempDecayOut').textContent = config.tempDecay.toFixed(3);
+
+        $('optimisticInit').value = Math.round(config.optimisticInit * 10);
+        $('optimisticInitOut').textContent = config.optimisticInit.toFixed(1);
+
+        $('ucbC').value = Math.round(config.ucbC * 100);
+        $('ucbCOut').textContent = config.ucbC.toFixed(2);
+
+        $('hybridUcbC').value = Math.round(config.hybridUcbC * 100);
+        $('hybridUcbCOut').textContent = config.hybridUcbC.toFixed(2);
+        $('hybridEps').value = Math.round(config.hybridEps * 100);
+        $('hybridEpsOut').textContent = config.hybridEps.toFixed(2);
+
+        $('noisySigma').value = Math.round(config.noisySigma * 100);
+        $('noisySigmaOut').textContent = config.noisySigma.toFixed(2);
+        $('noisySigmaMin').value = Math.round(config.noisySigmaMin * 100);
+        $('noisySigmaMinOut').textContent = config.noisySigmaMin.toFixed(2);
+        $('noisySigmaDecay').value = Math.round(config.noisySigmaDecay * 1000);
+        $('noisySigmaDecayOut').textContent = config.noisySigmaDecay.toFixed(3);
+
+        $('traceLambda').value = Math.round(config.traceLambda * 100);
+        $('traceLambdaOut').textContent = config.traceLambda.toFixed(2);
+      }
+
+      // ============================================================
+      // BINDING KONTROLEK
+      // ============================================================
+
+      function bindControls() {
+        // Double Q toggle
+        $('doubleQ').addEventListener('change', (e) => {
+          config.doubleQ = e.target.checked;
+          resetKnowledgeAndEpisodes();
+        });
+
+        $('cellSize').addEventListener('input', (e) => {
+          config.cellSize = +e.target.value;
+          $('cellSizeOut').textContent = config.cellSize + ' px';
+          resetKnowledgeAndEpisodes();
+        });
+
+        $('alpha').addEventListener('input', (e) => {
+          config.alpha = +e.target.value / 100;
+          $('alphaOut').textContent = config.alpha.toFixed(2);
+          updateStatus();
+        });
+
+        $('gamma').addEventListener('input', (e) => {
+          config.gamma = +e.target.value / 1000;
+          $('gammaOut').textContent = config.gamma.toFixed(3);
+          updateStatus();
+        });
+
+        $('speed').addEventListener('input', (e) => {
+          config.speed = +e.target.value / 10;
+          $('speedOut').textContent = config.speed.toFixed(1);
+          updateStatus();
+        });
+
+        $('strategy').addEventListener('change', (e) => {
+          const prev = config.strategy;
+          config.strategy = e.target.value;
+          renderPanels();
+          if (prev === 'optimistic' || config.strategy === 'optimistic') {
+            resetKnowledgeAndEpisodes();
+          } else {
+            resetExplorationSchedulers();
+            if (config.strategy === 'ucb') visitCounts.clear();
+            resetEpisodesOnly();
+          }
+        });
+
+        $('epsStart').addEventListener('input', (e) => {
+          config.epsStart = +e.target.value / 100;
+          runtime.epsilonCurrent = config.epsStart;
+          $('epsStartOut').textContent = config.epsStart.toFixed(2);
+          updateStatus();
+        });
+
+        $('epsMin').addEventListener('input', (e) => {
+          config.epsMin = +e.target.value / 100;
+          $('epsMinOut').textContent = config.epsMin.toFixed(2);
+        });
+
+        $('epsDecay').addEventListener('input', (e) => {
+          config.epsDecay = +e.target.value / 1000;
+          $('epsDecayOut').textContent = config.epsDecay.toFixed(3);
+        });
+
+        $('epsBoost').addEventListener('input', (e) => {
+          config.epsBoost = +e.target.value / 100;
+          $('epsBoostOut').textContent = config.epsBoost.toFixed(2);
+        });
+
+        $('epsFixed').addEventListener('input', (e) => {
+          config.epsFixed = +e.target.value / 100;
+          $('epsFixedOut').textContent = config.epsFixed.toFixed(2);
+          updateStatus();
+        });
+
+        $('epsDecayType').addEventListener('change', (e) => {
+          config.epsDecayType = e.target.value;
+          resetExplorationSchedulers();
+          resetEpisodesOnly();
+        });
+
+        $('tempStart').addEventListener('input', (e) => {
+          config.tempStart = +e.target.value / 100;
+          runtime.temperatureCurrent = config.tempStart;
+          $('tempStartOut').textContent = config.tempStart.toFixed(2);
+          updateStatus();
+        });
+
+        $('tempMin').addEventListener('input', (e) => {
+          config.tempMin = +e.target.value / 100;
+          $('tempMinOut').textContent = config.tempMin.toFixed(2);
+        });
+
+        $('tempDecay').addEventListener('input', (e) => {
+          config.tempDecay = +e.target.value / 1000;
+          $('tempDecayOut').textContent = config.tempDecay.toFixed(3);
+        });
+
+        $('optimisticInit').addEventListener('input', (e) => {
+          config.optimisticInit = +e.target.value / 10;
+          $('optimisticInitOut').textContent = config.optimisticInit.toFixed(1);
+          if (config.strategy === 'optimistic') resetKnowledgeAndEpisodes();
+        });
+
+        $('ucbC').addEventListener('input', (e) => {
+          config.ucbC = +e.target.value / 100;
+          $('ucbCOut').textContent = config.ucbC.toFixed(2);
+          updateStatus();
+        });
+
+        $('hybridUcbC').addEventListener('input', (e) => {
+          config.hybridUcbC = +e.target.value / 100;
+          $('hybridUcbCOut').textContent = config.hybridUcbC.toFixed(2);
+          updateStatus();
+        });
+
+        $('hybridEps').addEventListener('input', (e) => {
+          config.hybridEps = +e.target.value / 100;
+          $('hybridEpsOut').textContent = config.hybridEps.toFixed(2);
+          updateStatus();
+        });
+
+        $('noisySigma').addEventListener('input', (e) => {
+          config.noisySigma = +e.target.value / 100;
+          runtime.noiseSigmaCurrent = config.noisySigma;
+          $('noisySigmaOut').textContent = config.noisySigma.toFixed(2);
+          updateStatus();
+        });
+
+        $('noisySigmaMin').addEventListener('input', (e) => {
+          config.noisySigmaMin = +e.target.value / 100;
+          $('noisySigmaMinOut').textContent = config.noisySigmaMin.toFixed(2);
+        });
+
+        $('noisySigmaDecay').addEventListener('input', (e) => {
+          config.noisySigmaDecay = +e.target.value / 1000;
+          $('noisySigmaDecayOut').textContent = config.noisySigmaDecay.toFixed(3);
+        });
+
+        $('tracesEnabled').addEventListener('change', (e) => {
+          config.tracesEnabled = e.target.checked;
+          resetEpisodesOnly();
+        });
+
+        $('traceLambda').addEventListener('input', (e) => {
+          config.traceLambda = +e.target.value / 100;
+          $('traceLambdaOut').textContent = config.traceLambda.toFixed(2);
+        });
+
+        $('restartEpisodes').addEventListener('click', () => {
+          resetEpisodesOnly();
+        });
+
+        $('pauseBtn').addEventListener('click', () => {
+          runtime.paused = !runtime.paused;
+          updateStatus();
+        });
+
+        $('resetKnowledge').addEventListener('click', () => {
+          resetKnowledgeAndEpisodes();
+        });
+      }
+
+      // ============================================================
+      // INICJALIZACJA
+      // ============================================================
+
+      refreshControlOutputs();
+      renderPanels();
+      bindControls();
+      clearKnowledge();
+      createAgents();
+      drawHistoryChart();
+      updateStatus();
+      renderFrame();
+
+    })();
+  </script>
+</body>
+
+</html>
