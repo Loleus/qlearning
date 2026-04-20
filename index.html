@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Q-learning i Double Q-Learning w labiryncie</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <meta property="og:image" content="https://loleus.github.io/qlearning/fb.png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -537,10 +538,14 @@
         max-height: none;
       }
 
-      .button-row,
-      .mini-grid,
-      .status-grid {
+      .button-row {
         grid-template-columns: 1fr;
+      }
+      .status-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .mini-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
 
       .two-col-list {
@@ -557,7 +562,9 @@
         <h1>Q-learning i Double Q-Learning w labiryncie</h1>
         <p class="subtle">Symulacja porównuje tablicowy Q-learning z eksploracją sterowaną strategiami. Możesz
           obserwować wpływ polityki eksploracji, śladów kwalifikowalności λ, aproksymacji funkcji wartości oraz
-          złączenie dwóch estymatorów Q w Double Q-Learning. Dostępne strategie obejmują ε-greedy (klasyczny i dynamiczny z różnymi typami decay), Softmax, UCB, Optimistic initialization, NoisyNet oraz hybrydę UCB + ε-greedy.</p>
+          złączenie dwóch estymatorów Q w Double Q-Learning. Dostępne strategie obejmują ε-greedy (klasyczny i
+          dynamiczny z różnymi typami decay), Softmax, UCB, Optimistic initialization, NoisyNet oraz hybrydę UCB +
+          ε-greedy.</p>
       </div>
 
       <div class="status-grid">
@@ -570,80 +577,6 @@
         <div class="metric"><span>Skuteczność</span><b id="successVal">0%</b></div>
         <div class="metric"><span>Średnia nagroda</span><b id="avgRewardVal">0.00</b></div>
       </div>
-
-      <section class="section-card">
-        <h2>Tryb double Q</h2>
-        <div class="toggle-line">
-          <span class="toggle-badge badge double-badge">dwa estymatory</span>
-          <label class="toggle-switch">
-            <input type="checkbox" id="doubleQ" />
-            <span class="toggle-slider"></span>
-          </label>
-          <span id="doubleQLabel">Wyłączone</span>
-          <span class="badge reset-q">reset Q</span>
-        </div>
-        <p class="subtle" style="margin-top:6px;">Włączenie Double Q-Learning tworzy dwa niezależne estymatory Qᴬ i Qᴮ,
-          co redukuje przeuczenie szacowań wartości akcji. Kliknięcie przełącza między trybami Standard Q (1 estymator)
-          i Double Q (2 estymatory).</p>
-      </section>
-
-      <section class="section-card">
-        <h2>Środowisko i uczenie</h2>
-
-        <div class="control-group">
-          <label for="cellSize">Rozmiar komórki siatki
-            <span class="badge reset-q">reset Q + epizodów</span>
-          </label>
-          <input id="cellSize" type="range" min="10" max="40" step="1" value="20">
-          <div class="value-line">Wartość: <b id="cellSizeOut">20 px</b></div>
-        </div>
-
-        <div class="control-group">
-          <label for="alpha">Alpha (α)
-            <span class="badge rt">real-time</span>
-          </label>
-          <input id="alpha" type="range" min="1" max="60" step="1" value="22">
-          <div class="value-line">Wartość: <b id="alphaOut">0.22</b></div>
-        </div>
-
-        <div class="control-group">
-          <label for="gamma">Gamma (γ)
-            <span class="badge rt">real-time</span>
-          </label>
-          <input id="gamma" type="range" min="900" max="999" step="1" value="965">
-          <div class="value-line">Wartość: <b id="gammaOut">0.965</b></div>
-        </div>
-
-        <div class="control-group">
-          <label for="speed">Prędkość agenta
-            <span class="badge rt">real-time</span>
-          </label>
-          <input id="speed" type="range" min="15" max="55" step="1" value="32">
-          <div class="value-line">Wartość: <b id="speedOut">3.2</b></div>
-        </div>
-
-        <div class="note-box">
-          <div class="toggle-line">
-            <input id="tracesEnabled" type="checkbox">
-            <label for="tracesEnabled" style="margin:0;">Eligibility traces λ</label>
-            <span class="badge next">od nast. ep.</span>
-          </div>
-          <div class="control-group" style="margin-bottom:0; margin-top:10px;">
-            <label for="traceLambda">Lambda (λ)
-              <span class="badge next">od nast. ep.</span>
-            </label>
-            <input id="traceLambda" type="range" min="0" max="100" step="1" value="70">
-            <div class="value-line">Wartość: <b id="traceLambdaOut">0.70</b></div>
-          </div>
-        </div>
-
-        <div class="button-row">
-          <button id="restartEpisodes" class="button-secondary">Reset epizodów</button>
-          <button id="pauseBtn">Pauza</button>
-          <button id="resetKnowledge" class="button-danger">Reset Q</button>
-        </div>
-      </section>
-
       <section class="section-card">
         <h2>Strategia eksploracji</h2>
 
@@ -652,8 +585,8 @@
             <span class="badge reset-ep">reset epizodów</span>
           </label>
           <select id="strategy">
-            <option value="epsilon_dynamic">ε-greedy z dynamicznym ε</option>
             <option value="epsilon">ε-greedy klasyczny</option>
+            <option value="epsilon_dynamic">ε-greedy z dynamicznym ε</option>
             <option value="softmax">Softmax / Boltzmann</option>
             <option value="optimistic">Optimistic Q-initialization</option>
             <option value="ucb">UCB</option>
@@ -808,6 +741,81 @@
           </div>
         </div>
       </section>
+
+      <section class="section-card">
+        <h2>Tryb double Q</h2>
+        <div class="toggle-line">
+          <span class="toggle-badge badge double-badge">dwa estymatory</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="doubleQ" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span id="doubleQLabel">Wyłączone</span>
+          <span class="badge reset-q">reset Q</span>
+        </div>
+        <p class="subtle" style="margin-top:6px;">Włączenie Double Q-Learning tworzy dwa niezależne estymatory Qᴬ i Qᴮ,
+          co redukuje przeuczenie szacowań wartości akcji. Kliknięcie przełącza między trybami Standard Q (1 estymator)
+          i Double Q (2 estymatory).</p>
+      </section>
+
+      <section class="section-card">
+        <h2>Środowisko i uczenie</h2>
+
+        <div class="control-group">
+          <label for="cellSize">Rozmiar komórki siatki
+            <span class="badge reset-q">reset Q + epizodów</span>
+          </label>
+          <input id="cellSize" type="range" min="10" max="40" step="1" value="20">
+          <div class="value-line">Wartość: <b id="cellSizeOut">20 px</b></div>
+        </div>
+
+        <div class="control-group">
+          <label for="alpha">Alpha (α)
+            <span class="badge rt">real-time</span>
+          </label>
+          <input id="alpha" type="range" min="1" max="60" step="1" value="22">
+          <div class="value-line">Wartość: <b id="alphaOut">0.22</b></div>
+        </div>
+
+        <div class="control-group">
+          <label for="gamma">Gamma (γ)
+            <span class="badge rt">real-time</span>
+          </label>
+          <input id="gamma" type="range" min="900" max="999" step="1" value="965">
+          <div class="value-line">Wartość: <b id="gammaOut">0.965</b></div>
+        </div>
+
+        <div class="control-group">
+          <label for="speed">Prędkość agenta
+            <span class="badge rt">real-time</span>
+          </label>
+          <input id="speed" type="range" min="15" max="55" step="1" value="32">
+          <div class="value-line">Wartość: <b id="speedOut">3.2</b></div>
+        </div>
+
+        <div class="note-box">
+          <div class="toggle-line">
+            <input id="tracesEnabled" type="checkbox">
+            <label for="tracesEnabled" style="margin:0;">Eligibility traces λ</label>
+            <span class="badge next">od nast. ep.</span>
+          </div>
+          <div class="control-group" style="margin-bottom:0; margin-top:10px;">
+            <label for="traceLambda">Lambda (λ)
+              <span class="badge next">od nast. ep.</span>
+            </label>
+            <input id="traceLambda" type="range" min="0" max="100" step="1" value="70">
+            <div class="value-line">Wartość: <b id="traceLambdaOut">0.70</b></div>
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button id="restartEpisodes" class="button-secondary">Reset epizodów</button>
+          <button id="pauseBtn">Pauza</button>
+          <button id="resetKnowledge" class="button-danger">Reset Q</button>
+        </div>
+      </section>
+
+
     </aside>
 
     <main id="sim" class="panel">
@@ -848,45 +856,24 @@
       </div>
 
       <div class="doc-block">
-        <h2>Double Q-Learning</h2>
-
-        <h3>Idea Double Q-Learning</h3>
-        <span class="formula">Losowo: Qᴬ ← Qᴬ + αδᴬ  lub  Qᴮ ← Qᴮ + αδᴮ</span>
-        <span class="formula">δᴬ = r + γQᴮ(s', argmaxₐ Qᴬ(s',a)) − Qᴬ(s,a)</span>
-        <span class="formula">δᴮ = r + γQᴬ(s', argmaxₐ Qᴮ(s',a)) − Qᴮ(s,a)</span>
-        <p>Double Q-Learning (Hasselt, 2010) rozwiązuje problem <b>przeuczenia</b> (overestimation) w standardowym
-          Q-learningu. W standardowym podejściu ta sama funkcja Q wybiera i ocenia akcję, co prowadzi do systematycznego
-          zawyżania szacowań wartości szczególnie w stanie początkowym treningu.</p>
-        <p>Rozwiązanie: utrzymuj <b>dwa niezależne estymatory</b> Qᴬ i Qᴮ. Przy każdej aktualizacji losowo wybierz
-          jeden.</p>
-        <ul>
-          <li>Wybór akcji w polityce: <b>średnia arytmetyczna</b> Qᴬ i Qᴮ</li>
-          <li>Aktualizacja Qᴬ: wybierz akcję przez argmax z Qᴬ, ale oceń jej wartość przez <b>Qᴮ</b></li>
-          <li>Aktualizacja Qᴮ: wybierz akcję przez argmax z Qᴮ, ale oceń jej wartość przez <b>Qᴬ</b></li>
-          <li>To decoupling zapewnia umiarkowane, nieobciążone szacowanie (Hasselt, 2010)</li>
-          <li><b>Włączenie Double Q</b> — <span class="badge reset-q">reset Q + epizodów</span></li>
-        </ul>
-      </div>
-
-      <div class="doc-block">
         <h2>Strategie eksploracji</h2>
-
-        <h3>1. ε-greedy z dynamicznym ε</h3>
-        <span class="formula">a = { losowa akcja z prawd. ε, argmaxₐ Q(s,a) w przeciwnym razie }</span>
-        <p>Dodany został harmonogram eksploracji z minimalnym ε i wzmocnieniem przy stagnacji. Dzięki temu polityka może
-          znów zwiększyć eksplorację, gdy skuteczność epizodów spada.</p>
-        <p>Dostępne typy decay: <b>Linear</b> (ε = ε₀ - k·t), <b>Exponential</b> (ε = ε₀ · decayᵗ), <b>Inverse</b> (ε = ε₀ / (1 + k·t)), <b>Cosine annealing</b> (ε = ε_min + ½(ε₀-ε_min)(1+cos(πt/T))).</p>
-        <ul>
-          <li><b>Typ decay ε</b> — <span class="badge next">od nast. ep.</span></li>
-          <li><b>ε start</b> — <span class="badge rt">real-time</span></li>
-          <li><b>ε min, decay, boost</b> — <span class="badge next">od nast. ep.</span></li>
-        </ul>
-
-        <h3>1.1. ε-greedy klasyczny</h3>
+        <h3>1. ε-greedy klasyczny</h3>
         <span class="formula">a = { losowa akcja z prawd. ε, argmaxₐ Q(s,a) w przeciwnym razie }</span>
         <p>Podstawowa strategia ε-greedy bez dynamicznego zmniejszania ε. Stała wartość eksploracji.</p>
         <ul>
           <li><b>ε</b> — <span class="badge rt">real-time</span></li>
+        </ul>
+
+        <h3>1.1. ε-greedy z dynamicznym ε</h3>
+        <span class="formula">a = { losowa akcja z prawd. ε, argmaxₐ Q(s,a) w przeciwnym razie }</span>
+        <p>Dodany został harmonogram eksploracji z minimalnym ε i wzmocnieniem przy stagnacji. Dzięki temu polityka może
+          znów zwiększyć eksplorację, gdy skuteczność epizodów spada.</p>
+        <p>Dostępne typy decay: <b>Linear</b> (ε = ε₀ - k·t), <b>Exponential</b> (ε = ε₀ · decayᵗ), <b>Inverse</b> (ε =
+          ε₀ / (1 + k·t)), <b>Cosine annealing</b> (ε = ε_min + ½(ε₀-ε_min)(1+cos(πt/T))).</p>
+        <ul>
+          <li><b>Typ decay ε</b> — <span class="badge next">od nast. ep.</span></li>
+          <li><b>ε start</b> — <span class="badge rt">real-time</span></li>
+          <li><b>ε min, decay, boost</b> — <span class="badge next">od nast. ep.</span></li>
         </ul>
 
         <h3>2. Softmax / Boltzmann</h3>
@@ -920,7 +907,8 @@
         <h3>4.1. Hybrydowa (UCB + ε-greedy)</h3>
         <span class="formula">UCB(s,a) = Q(s,a) + c · √( ln(N(s)+1) / (N(s,a)+1) )</span>
         <span class="formula">a = { losowa akcja z prawd. ε, argmaxₐ UCB(s,a) w przeciwnym razie }</span>
-        <p>Kombinacja UCB z ε-greedy. Z prawdopodobieństwem ε wybiera losowo, w przeciwnym razie używa UCB do wyboru akcji.</p>
+        <p>Kombinacja UCB z ε-greedy. Z prawdopodobieństwem ε wybiera losowo, w przeciwnym razie używa UCB do wyboru
+          akcji.</p>
         <ul>
           <li><b>c UCB</b> — <span class="badge reset-q">reset Q</span></li>
           <li><b>ε</b> — <span class="badge rt">real-time</span></li>
@@ -933,6 +921,27 @@
         <ul>
           <li><b>σ start</b> — <span class="badge rt">real-time</span></li>
           <li><b>σ min, decay</b> — <span class="badge next">od nast. ep.</span></li>
+        </ul>
+      </div>
+
+      <div class="doc-block">
+        <h2>Double Q-Learning</h2>
+
+        <h3>Idea Double Q-Learning</h3>
+        <span class="formula">Losowo: Qᴬ ← Qᴬ + αδᴬ  lub  Qᴮ ← Qᴮ + αδᴮ</span>
+        <span class="formula">δᴬ = r + γQᴮ(s', argmaxₐ Qᴬ(s',a)) − Qᴬ(s,a)</span>
+        <span class="formula">δᴮ = r + γQᴬ(s', argmaxₐ Qᴮ(s',a)) − Qᴮ(s,a)</span>
+        <p>Double Q-Learning (Hasselt, 2010) rozwiązuje problem <b>przeuczenia</b> (overestimation) w standardowym
+          Q-learningu. W standardowym podejściu ta sama funkcja Q wybiera i ocenia akcję, co prowadzi do systematycznego
+          zawyżania szacowań wartości szczególnie w stanie początkowym treningu.</p>
+        <p>Rozwiązanie: utrzymuj <b>dwa niezależne estymatory</b> Qᴬ i Qᴮ. Przy każdej aktualizacji losowo wybierz
+          jeden.</p>
+        <ul>
+          <li>Wybór akcji w polityce: <b>średnia arytmetyczna</b> Qᴬ i Qᴮ</li>
+          <li>Aktualizacja Qᴬ: wybierz akcję przez argmax z Qᴬ, ale oceń jej wartość przez <b>Qᴮ</b></li>
+          <li>Aktualizacja Qᴮ: wybierz akcję przez argmax z Qᴮ, ale oceń jej wartość przez <b>Qᴬ</b></li>
+          <li>To decoupling zapewnia umiarkowane, nieobciążone szacowanie (Hasselt, 2010)</li>
+          <li><b>Włączenie Double Q</b> — <span class="badge reset-q">reset Q + epizodów</span></li>
         </ul>
       </div>
 
@@ -963,12 +972,16 @@
       </div>
       <div class="doc-block">
         <h2>Co to jest Q-learning?</h2>
-        <p>Q‑learning to algorytm uczenia ze wzmocnieniem (Reinforcement Learning, RL), który uczy się optymalnej polityki działania w środowisku metodą prób i błędów, bez znajomości modelu środowiska. Kluczowym elementem jest funkcja Q(s, a), która ocenia „jakość” wykonania akcji a w stanie s. Algorytm aktualizuje tę funkcję na podstawie nagród i przewidywanej wartości przyszłych stanów.</p>
+        <p>Q‑learning to algorytm uczenia ze wzmocnieniem (Reinforcement Learning, RL), który uczy się optymalnej
+          polityki działania w środowisku metodą prób i błędów, bez znajomości modelu środowiska. Kluczowym elementem
+          jest funkcja Q(s, a), która ocenia „jakość” wykonania akcji a w stanie s. Algorytm aktualizuje tę funkcję na
+          podstawie nagród i przewidywanej wartości przyszłych stanów.</p>
 
         <h2>🕰️ Historyczne tło powstania Q‑learningu</h2>
 
         <h3>1.1. Korzenie: Markowowskie procesy decyzyjne (MDP)</h3>
-        <p>Podstawy teoretyczne sięgają lat 50. i 60., kiedy powstała teoria Markov Decision Processes (Bellman, Howard). Bellman wprowadził słynne równanie:</p>
+        <p>Podstawy teoretyczne sięgają lat 50. i 60., kiedy powstała teoria Markov Decision Processes (Bellman,
+          Howard). Bellman wprowadził słynne równanie:</p>
         <span class="formula">V(s) = maxₐ [R(s,a) + γ ∑_{s′} P(s′|s,a) V(s′)]</span>
         <p>To fundament dynamicznego programowania.</p>
 
@@ -1080,7 +1093,7 @@
         alpha: 0.22,
         gamma: 0.965,
         speed: 3.2,
-        strategy: 'epsilon_dynamic',
+        strategy: 'epsilon',
         tracesEnabled: false,
         traceLambda: 0.70,
         // Double Q-Learning nowy parametr
