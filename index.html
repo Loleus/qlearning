@@ -538,9 +538,10 @@
         max-height: none;
       }
 
-      .button-row {
+      /* .button-row {
         grid-template-columns: 1fr;
-      }
+      } */
+       
       .status-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -816,7 +817,7 @@
     <main id="sim" class="panel">
       <div class="canvas-wrap">
         <canvas id="mazeCanvas" width="720" height="520"></canvas>
-        <div class="canvas-hint" id="liveHint">Tryb: Standard Q • Strategia: ε-greedy</div>
+        <!-- <div class="canvas-hint" id="liveHint">Tryb: Standard Q • Strategia: ε-greedy</div> -->
       </div>
 
       <div class="mini-grid">
@@ -1938,10 +1939,10 @@
         $('knowledgeVal').textContent = (Q_A.size + Q_B.size) + ' stanów';
         $('pauseBtn').textContent = runtime.paused ? 'Wznów' : 'Pauza';
 
-        $('liveHint').textContent =
-          'Tryb: ' + (config.doubleQ ? 'Double Q (2 est.)' : 'Standard Q (1 est.)') +
-          ' • Strategia: ' + strategyLabel(config.strategy) +
-          ' • ' + getExplorationMeta().text;
+//        $('liveHint').textContent =
+//        'Tryb: ' + (config.doubleQ ? 'Double Q (2 est.)' : 'Standard Q (1 est.)') +
+//        ' • Strategia: ' + strategyLabel(config.strategy) +
+//          ' • ' + getExplorationMeta().text;
       }
 
       function renderPanels() {
