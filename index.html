@@ -144,7 +144,7 @@
       border-radius: var(--radius);
       background: linear-gradient(180deg, rgba(20, 40, 73, 0.92), rgba(10, 20, 40, 0.95));
       border: 1px solid rgba(72, 117, 220, 0.36);
-      min-height: 68px;
+      /* min-height: 68px; */
     }
 
     .metric span {
@@ -157,7 +157,7 @@
     }
 
     .metric b {
-      font-size: 1rem;
+      font-size: 0.88rem;
       color: white;
     }
 
@@ -336,7 +336,7 @@
     }
 
     .mini-card span {
-      display: block;
+      /* display: block; */
       color: #97add2;
       font-size: 0.8rem;
       margin-bottom: 5px;
@@ -344,13 +344,14 @@
 
     .mini-card b {
       color: white;
-      font-size: 1rem;
+      font-size: 0.88rem;
+      margin-left: 10px;
     }
 
     canvas {
       width: 100%;
       display: block;
-      border-radius: 16px;
+      /* border-radius: 16px; */
       border: 1px solid rgba(88, 131, 230, 0.45);
       background: linear-gradient(180deg, rgba(10, 19, 33, 0.96), rgba(7, 14, 24, 0.98));
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 12px 28px rgba(0, 0, 0, 0.28);
@@ -545,6 +546,7 @@
       .status-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+
       .mini-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
       }
@@ -555,12 +557,13 @@
     }
   </style>
 </head>
+
 <body>
   <div id="layout">
     <aside id="ui" class="panel">
       <div class="hero">
         <h1>Q-learning i Double Q-Learning w labiryncie</h1>
-        <p class="subtle">Symulacja tablicowego Q-learningu z implementacją Double Q-Learning (Hasselt 2010), 
+        <p class="subtle">Symulacja tablicowego Q-learningu z implementacją Double Q-Learning (Hasselt 2010),
           Watkins's Q(λ) oraz siedmioma strategiami eksploracji.</p>
       </div>
 
@@ -568,8 +571,8 @@
         <div class="metric"><span>Epizod</span><b id="episodeVal">0</b></div>
         <div class="metric"><span>Agenci</span><b id="populationVal">100</b></div>
         <div class="metric"><span>Tryb uczenia</span><b id="stateBadge">Standard Q</b></div>
-        <div class="metric"><span>Strategia</span><b id="strategyBadge">ε-greedy</b></div>
-        <div class="metric"><span>Parametr eksploracji</span><b id="exploreVal">ε = 0.350</b></div>
+        <div class="metric"><span>Strategia</span><b id="strategyBadge">ε-greedy klasyczny</b></div>
+        <div class="metric"><span>Par. eksploracji</span><b id="exploreVal">ε = 0.350</b></div>
         <div class="metric"><span>Najlepszy wynik</span><b id="bestVal">—</b></div>
         <div class="metric"><span>Skuteczność</span><b id="successVal">0%</b></div>
         <div class="metric"><span>Średnia nagroda</span><b id="avgRewardVal">0.00</b></div>
@@ -751,14 +754,23 @@
           <span id="doubleQLabel">Wyłączone</span>
           <span class="badge reset-q">reset Q</span>
         </div>
-        <p class="subtle">Double Q-Learning redukuje systematyczne przeszacowanie wartości akcji poprzez utrzymywanie dwóch niezależnych estymatorów Qᴬ i Qᴮ.</p>
+        <p class="subtle">Double Q-Learning redukuje systematyczne przeszacowanie wartości akcji poprzez utrzymywanie
+          dwóch niezależnych estymatorów Qᴬ i Qᴮ.</p>
       </section>
 
       <section class="section-card">
         <h2>Środowisko i uczenie</h2>
 
         <div class="control-group">
-          <label for="cellSize">Rozmiar komórki siatki
+          <label for="popSize">Liczba Agentów
+            <span class="badge reset-q">reset Q + epizodów</span>
+          </label>
+          <input id="popSize" type="range" min="20" max="200" step="10" value="100">
+          <div class="value-line">Wartość: <b id="popSizeOut">100</b></div>
+        </div>
+
+        <div class="control-group">
+          <label for="cellSize">Komórka siatki
             <span class="badge reset-q">reset Q + epizodów</span>
           </label>
           <input id="cellSize" type="range" min="10" max="40" step="1" value="20">
@@ -821,9 +833,9 @@
       </div>
 
       <div class="mini-grid">
-        <div class="mini-card"><span>Znane stany (Qᴬ)</span><b id="knowledgeVal1">0 stanów</b></div>
-        <div class="mini-card"><span>Znane stany (Qᴮ)</span><b id="knowledgeVal2">0 stanów</b></div>
-        <div class="mini-card"><span>Razem</span><b id="knowledgeVal">0 stanów</b></div>
+        <div class="mini-card"><span>Stany (Qᴬ)</span><b id="knowledgeVal1">0</b></div>
+        <div class="mini-card"><span>Stany(Qᴮ)</span><b id="knowledgeVal2">0</b></div>
+        <div class="mini-card"><span>Razem</span><b id="knowledgeVal">0</b></div>
       </div>
 
       <div style="margin-top:14px;">
@@ -966,7 +978,7 @@
           <li><b>Reset Q</b> — czyści wiedzę i resetuje epizody.</li>
         </ul>
       </div>
-      
+
       <div class="doc-block">
         <h2>Co to jest Q-learning?</h2>
         <p>Q‑learning to algorytm uczenia ze wzmocnieniem (Reinforcement Learning, RL), który uczy się optymalnej
@@ -1057,7 +1069,7 @@
       const PENALTY_WALL = -10.0;
       const PENALTY_TIMEOUT = -4.0;
       const SHAPING_FACTOR = 0.12;
-      
+
       // Akcje: 0=Góra, 1=Dół, 2=Lewo, 3=Prawo
       const ACTIONS = [
         { dx: 0, dy: -1 },
@@ -1208,7 +1220,7 @@
         if (runtime.softmaxCache.has(cacheKey)) {
           return runtime.softmaxCache.get(cacheKey);
         }
-        
+
         const maxV = maxArray(values);
         const probs = new Float32Array(values.length);
         let sum = 0;
@@ -1248,8 +1260,8 @@
 
       function strategyLabel(strategy) {
         switch (strategy) {
-          case 'epsilon_dynamic': return 'ε-greedy';
-          case 'epsilon': return 'ε-greedy klasyczny';
+          case 'epsilon_dynamic': return 'ε-greedy dyn.';
+          case 'epsilon': return 'ε-greedy kl.';
           case 'softmax': return 'Softmax';
           case 'optimistic': return 'Optimistic';
           case 'ucb': return 'UCB';
@@ -1705,7 +1717,7 @@
         const useQ = Q_A;
         const cellW = config.cellSize;
         const cellH = cellW;
-        
+
         // Limit do 200 stanów dla optymalizacji
         const maxStates = 200;
         const stateEntries = Array.from(useQ.entries()).slice(0, maxStates);
@@ -1866,7 +1878,7 @@
             const distAfter = Math.hypot(ag.x - goal.x, ag.y - goal.y);
             // Potential Based Reward Shaping
             reward += (distBefore - distAfter) * SHAPING_FACTOR;
-            
+
             if (atGoal(ag.x, ag.y)) {
               reward = REWARD_GOAL;
               terminal = true;
@@ -1910,7 +1922,7 @@
         }
         runtime.lastFrameTime = now;
         runtime.frameCounter++;
-        
+
         drawMaze();
         if (!runtime.paused) stepSimulation();
         for (const ag of agents) ag.draw(ctx);
@@ -1935,15 +1947,15 @@
         $('successVal').textContent = Math.round(runtime.lastSuccessRate * 100) + '%';
         $('avgRewardVal').textContent = runtime.lastAvgReward.toFixed(2);
         $('doubleQLabel').textContent = config.doubleQ ? 'Włączone (' + estLabel + ')' : 'Wyłączone (' + estLabel + ')';
-        $('knowledgeVal1').textContent = Q_A.size + ' stanów';
-        $('knowledgeVal2').textContent = Q_B.size + ' stanów';
-        $('knowledgeVal').textContent = (Q_A.size + Q_B.size) + ' stanów';
+        $('knowledgeVal1').textContent = Q_A.size;
+        $('knowledgeVal2').textContent = Q_B.size;
+        $('knowledgeVal').textContent = (Q_A.size + Q_B.size);
         $('pauseBtn').textContent = runtime.paused ? 'Wznów' : 'Pauza';
 
-//        $('liveHint').textContent =
-//        'Tryb: ' + (config.doubleQ ? 'Double Q (2 est.)' : 'Standard Q (1 est.)') +
-//        ' • Strategia: ' + strategyLabel(config.strategy) +
-//          ' • ' + getExplorationMeta().text;
+        //        $('liveHint').textContent =
+        //        'Tryb: ' + (config.doubleQ ? 'Double Q (2 est.)' : 'Standard Q (1 est.)') +
+        //        ' • Strategia: ' + strategyLabel(config.strategy) +
+        //          ' • ' + getExplorationMeta().text;
       }
 
       function renderPanels() {
@@ -2010,6 +2022,12 @@
 
         $('traceLambda').value = Math.round(config.traceLambda * 100);
         $('traceLambdaOut').textContent = config.traceLambda.toFixed(2);
+
+        // Population / number of agents
+        if ($('popSize')) {
+          $('popSize').value = config.popSize;
+          $('popSizeOut').textContent = config.popSize;
+        }
       }
 
       // ============================================================
@@ -2163,6 +2181,18 @@
           resetEpisodesOnly();
         });
 
+        // Population control: changing number of agents requires resetting knowledge/episodes
+        if ($('popSize')) {
+          $('popSize').addEventListener('input', (e) => {
+            const val = +e.target.value;
+            // sanitize to integer
+            config.popSize = Math.max(1, Math.floor(val));
+            $('popSizeOut').textContent = config.popSize;
+            // According to UI badge, changing population requires clearing Q and episodes
+            resetKnowledgeAndEpisodes();
+          });
+        }
+
         $('traceLambda').addEventListener('input', (e) => {
           config.traceLambda = +e.target.value / 100;
           $('traceLambdaOut').textContent = config.traceLambda.toFixed(2);
@@ -2198,4 +2228,5 @@
     })();
   </script>
 </body>
+
 </html>
