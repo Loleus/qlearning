@@ -554,17 +554,13 @@
     }
   </style>
 </head>
-
 <body>
   <div id="layout">
     <aside id="ui" class="panel">
       <div class="hero">
         <h1>Q-learning i Double Q-Learning w labiryncie</h1>
-        <p class="subtle">Symulacja porównuje tablicowy Q-learning z eksploracją sterowaną strategiami. Możesz
-          obserwować wpływ polityki eksploracji, śladów kwalifikowalności λ, aproksymacji funkcji wartości oraz
-          złączenie dwóch estymatorów Q w Double Q-Learning. Dostępne strategie obejmują ε-greedy (klasyczny i
-          dynamiczny z różnymi typami decay), Softmax, UCB, Optimistic initialization, NoisyNet oraz hybrydę UCB +
-          ε-greedy.</p>
+        <p class="subtle">Zaawansowana symulacja tablicowego Q-learningu z poprawną implementacją Double Q-Learning (Hasselt 2010), 
+          Watkins's Q(λ) oraz siedmioma strategiami eksploracji. Praca licencjacka — wersja po recenzji matematyczno-programistycznej.</p>
       </div>
 
       <div class="status-grid">
@@ -577,6 +573,7 @@
         <div class="metric"><span>Skuteczność</span><b id="successVal">0%</b></div>
         <div class="metric"><span>Średnia nagroda</span><b id="avgRewardVal">0.00</b></div>
       </div>
+
       <section class="section-card">
         <h2>Strategia eksploracji</h2>
 
@@ -753,9 +750,7 @@
           <span id="doubleQLabel">Wyłączone</span>
           <span class="badge reset-q">reset Q</span>
         </div>
-        <p class="subtle" style="margin-top:6px;">Włączenie Double Q-Learning tworzy dwa niezależne estymatory Qᴬ i Qᴮ,
-          co redukuje przeuczenie szacowań wartości akcji. Kliknięcie przełącza między trybami Standard Q (1 estymator)
-          i Double Q (2 estymatory).</p>
+        <p class="subtle">Double Q-Learning redukuje systematyczne przeszacowanie wartości akcji poprzez utrzymywanie dwóch niezależnych estymatorów Qᴬ i Qᴮ.</p>
       </section>
 
       <section class="section-card">
@@ -821,12 +816,12 @@
     <main id="sim" class="panel">
       <div class="canvas-wrap">
         <canvas id="mazeCanvas" width="720" height="520"></canvas>
-        <div class="canvas-hint" id="liveHint">Tryb: Standard Q (1 estymator) • Strategia: ε-greedy</div>
+        <div class="canvas-hint" id="liveHint">Tryb: Standard Q • Strategia: ε-greedy</div>
       </div>
 
       <div class="mini-grid">
-        <div class="mini-card"><span>Znane stany (Q¹)</span><b id="knowledgeVal1">0 stanów</b></div>
-        <div class="mini-card"><span>Znane stany (Q²)</span><b id="knowledgeVal2">0 stanów</b></div>
+        <div class="mini-card"><span>Znane stany (Qᴬ)</span><b id="knowledgeVal1">0 stanów</b></div>
+        <div class="mini-card"><span>Znane stany (Qᴮ)</span><b id="knowledgeVal2">0 stanów</b></div>
         <div class="mini-card"><span>Razem</span><b id="knowledgeVal">0 stanów</b></div>
       </div>
 
@@ -1049,7 +1044,7 @@
       'use strict';
 
       // ============================================================
-      // KONSTANTY
+      // KONSTANTY I KONFIGURACJA
       // ============================================================
       const W = 720;
       const H = 520;
@@ -1060,6 +1055,8 @@
       const PENALTY_WALL = -10.0;
       const PENALTY_TIMEOUT = -4.0;
       const SHAPING_FACTOR = 0.12;
+      
+      // Akcje: 0=Góra, 1=Dół, 2=Lewo, 3=Prawo
       const ACTIONS = [
         { dx: 0, dy: -1 },
         { dx: 0, dy: 1 },
@@ -1084,9 +1081,6 @@
         { x: 320, y: 260, w: 180, h: 20 }
       ];
 
-      // ============================================================
-      // KONFIGURACJA
-      // ============================================================
       const config = {
         popSize: POP_SIZE,
         cellSize: 20,
@@ -1096,7 +1090,6 @@
         strategy: 'epsilon',
         tracesEnabled: false,
         traceLambda: 0.70,
-        // Double Q-Learning nowy parametr
         doubleQ: false,
         // ε-greedy
         epsDecayType: 'exponential',
@@ -1138,19 +1131,21 @@
       };
 
       // Double Q-Learning: dwie tablice Q
-      const Q = new Map();       // Q_A (główna)
+      // Używamy Map dla oszczędności pamięci (sparse states)
+      const Q_A = new Map();       // Q_A (główna)
       const Q_B = new Map();     // Q_B (drugi estymator)
       const visitCounts = new Map();
       let agents = [];
 
       // ============================================================
-      // FUNKCJE POMOCNICZE
+      // FUNKCJE POMOCNICZE (MATEMATYKA I LOGIKA)
       // ============================================================
       const $ = (id) => document.getElementById(id);
 
       function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
       function randInt(max) { return Math.floor(Math.random() * max); }
 
+      // Generowanie liczby z rozkładu normalnego (Box-Muller transform)
       function gaussianRandom() {
         let u = 0, v = 0;
         while (u === 0) u = Math.random();
@@ -1166,6 +1161,19 @@
         return m;
       }
 
+      // Klasa do zarządzania śladami eligibility dla Double Q-Learning
+      class Traces {
+        constructor() {
+          this.A = new Map(); // ślady dla Q_A
+          this.B = new Map(); // ślady dla Q_B
+        }
+        clear() {
+          this.A.clear();
+          this.B.clear();
+        }
+      }
+
+      // Argmax z losowym rozstrzyganiem remisów
       function argmaxRandomTie(arr) {
         let best = -Infinity;
         const ids = [];
@@ -1187,6 +1195,7 @@
         return values[action] >= best - 1e-9;
       }
 
+      // Softmax numerycznie stabilny (odejmujemy max)
       function softmax(values, temperature) {
         const t = Math.max(0.05, temperature);
         const maxV = maxArray(values);
@@ -1230,7 +1239,7 @@
       }
 
       // ============================================================
-      // DOUBLE Q-LEARNING - OBSŁUGA DWÓCH ESTYMATORÓW
+      // OBSŁUGA TABLIC Q (SPEEDUP przez Float32Array)
       // ============================================================
 
       function resetExplorationSchedulers() {
@@ -1246,7 +1255,7 @@
         return 0;
       }
 
-      // Pobierz lub utwórz wartości Q dla danego stanu z określonej tablicy
+      // Pobiera lub tworzy wiersz Q dla danego stanu
       function ensureQ(qMap, key) {
         if (!qMap.has(key)) {
           qMap.set(key, new Float32Array(4).fill(getInitialQValue()));
@@ -1254,12 +1263,12 @@
         return qMap.get(key);
       }
 
-      // Średnia z Q_A i Q_B do wyboru akcji (gdy Double Q jest włączone)
+      // Średnia Q_A i Q_B (do wyboru akcji w Double Q)
       function getAveragedQ(key) {
         if (!config.doubleQ) {
-          return ensureQ(Q, key);
+          return ensureQ(Q_A, key);
         }
-        const qa = ensureQ(Q, key);
+        const qa = ensureQ(Q_A, key);
         const qb = ensureQ(Q_B, key);
         const avg = new Float32Array(4);
         for (let i = 0; i < 4; i++) {
@@ -1268,14 +1277,8 @@
         return avg;
       }
 
-      // Max z konkretnej tablicy Q
       function maxQ(qMap, key) {
         return maxArray(ensureQ(qMap, key));
-      }
-
-      // Max ze średniej (Double Q) lub z Q (standard)
-      function maxQForSelection(key) {
-        return maxArray(getAveragedQ(key));
       }
 
       function ensureCounts(key) {
@@ -1289,146 +1292,97 @@
       }
 
       // ============================================================
-      // AKTUALIZACJA Q - STANDARD vs DOUBLE
+      // AKTUALIZACJA Q (CORE ALGORITHM)
       // ============================================================
 
-      // Standard Q-Learning: Q(s,a) ← Q(s,a) + α[r + γ·maxₐ'Q(s',a') − Q(s,a)]
-      function standardQUpdate(sKey, a, r, sNextKey, terminal) {
-        const qVals = ensureQ(Q, sKey);
-        const target = terminal ? r : r + config.gamma * maxQ(Q, sNextKey);
-        qVals[a] += config.alpha * (target - qVals[a]);
+      // Oblicz TD Target dla danego estymatora
+      function computeTDTarget(selectMap, evalMap, sKey, nextKey, reward, terminal) {
+        if (terminal) return reward;
+        const nextSelect = ensureQ(selectMap, nextKey);
+        const bestAction = argmaxRandomTie(nextSelect);
+        return reward + config.gamma * ensureQ(evalMap, nextKey)[bestAction];
       }
 
-      // Double Q-Learning z losowym wyborem estymatora (Hasselt, 2010)
-      function doubleQUpdate(sKey, a, r, sNextKey, terminal) {
-        if (Math.random() < 0.5) {
-          // Aktualizuj Q_A: wybierz akcję przez argmax z Q_A, ale oceń przez Q_B
-          const qA = ensureQ(Q, sKey);
-          if (terminal) {
-            qA[a] += config.alpha * (r - qA[a]);
-          } else {
-            const nextQA = ensureQ(Q, sNextKey);
-            const nextQB = ensureQ(Q_B, sNextKey);
-            const greedyAction = argmaxRandomTie(nextQA); // argmax z Q_A
-            const target = r + config.gamma * nextQB[greedyAction]; // ale ewaluacja przez Q_B
-            qA[a] += config.alpha * (target - qA[a]);
-          }
-        } else {
-          // Aktualizuj Q_B: wybierz akcję przez argmax z Q_B, ale oceń przez Q_A
-          const qB = ensureQ(Q_B, sKey);
-          if (terminal) {
-            qB[a] += config.alpha * (r - qB[a]);
-          } else {
-            const nextQB = ensureQ(Q_B, sNextKey);
-            const nextQA = ensureQ(Q, sNextKey);
-            const greedyAction = argmaxRandomTie(nextQB); // argmax z Q_B
-            const target = r + config.gamma * nextQA[greedyAction]; // ale ewaluacja przez Q_A
-            qB[a] += config.alpha * (target - qB[a]);
-          }
-        }
-      }
-
-      // Główna funkcja aktualizacji — decyduje standard czy double
-      function qUpdateMain(sKey, a, r, sNextKey, terminal) {
+      // Główna funkcja aktualizacji Q
+      function qUpdate(sKey, action, reward, nextKey, terminal) {
         if (config.doubleQ) {
-          doubleQUpdate(sKey, a, r, sNextKey, terminal);
+          const updateA = Math.random() < 0.5;
+          const target = updateA
+            ? computeTDTarget(Q_A, Q_B, sKey, nextKey, reward, terminal)
+            : computeTDTarget(Q_B, Q_A, sKey, nextKey, reward, terminal);
+
+          const q = ensureQ(updateA ? Q_A : Q_B, sKey);
+          q[action] += config.alpha * (target - q[action]);
         } else {
-          standardQUpdate(sKey, a, r, sNextKey, terminal);
+          const q = ensureQ(Q_A, sKey);
+          const target = terminal ? reward : reward + config.gamma * maxQ(Q_A, nextKey);
+          q[action] += config.alpha * (target - q[action]);
         }
       }
 
-      // Standard Eligibility Traces
-      function tracesUpdateStandard(agent, sKey, a, r, sNextKey, terminal, greedyChosen) {
-        const qVals = ensureQ(Q, sKey);
-        const nextMax = terminal ? 0 : maxQ(Q, sNextKey);
-        const delta = r + config.gamma * nextMax - qVals[a];
-        const trace = ensureTrace(agent.traces, sKey);
-        trace[a] = 1;
+      // ============================================================
+      // ELIGIBILITY TRACES (Watkins's Q(lambda))
+      // ============================================================
 
-        const stale = [];
-        for (const [key, arr] of agent.traces.entries()) {
-          const valArr = ensureQ(Q, key);
-          let alive = false;
-          for (let i = 0; i < 4; i++) {
-            if (arr[i] > 1e-5) {
-              valArr[i] += config.alpha * delta * arr[i];
-              arr[i] *= config.gamma * config.traceLambda;
-              if (arr[i] > 1e-4) alive = true;
-              else arr[i] = 0;
+      // ============================================================
+      // ELIGIBILITY TRACES (Watkins's Q(lambda))
+      // ============================================================
+
+      function applyTraces(qMap, traceMap, delta) {
+        for (const [key, trace] of traceMap) {
+          const q = ensureQ(qMap, key);
+          for (let a = 0; a < 4; a++) {
+            if (trace[a] > 1e-6) {
+              q[a] += config.alpha * delta * trace[a];
+              trace[a] *= config.gamma * config.traceLambda;
             }
           }
-          if (!alive) stale.push(key);
-        }
-        for (const key of stale) agent.traces.delete(key);
-        if (terminal || !greedyChosen) agent.traces.clear();
-      }
-
-      // Double Q Eligibility Traces
-      function tracesUpdateDouble(agent, sKey, a, r, sNextKey, terminal, greedyChosen) {
-        const useA = Math.random() < 0.5;
-        const targetMap = useA ? Q : Q_B;
-        const evalMap = useA ? Q_B : Q;
-        const targetVal = ensureQ(targetMap, sKey);
-        let delta;
-
-        if (terminal) {
-          delta = r - targetVal[a];
-        } else {
-          const nextTarget = ensureQ(targetMap, sNextKey);
-          const nextEval = ensureQ(evalMap, sNextKey);
-          const greedyAction = argmaxRandomTie(nextTarget);
-          delta = r + config.gamma * nextEval[greedyAction] - targetVal[a];
-        }
-
-        const trace = useA
-          ? ensureTrace(agent.traces, sKey)
-          : ensureTrace(agent.tracesB, sKey);
-        trace[a] = 1;
-
-        const staleA = [];
-        for (const [key, arr] of agent.traces.entries()) {
-          const valArr = ensureQ(Q, key);
-          let alive = false;
-          for (let i = 0; i < 4; i++) {
-            if (arr[i] > 1e-5) {
-              valArr[i] += config.alpha * delta * arr[i];
-              arr[i] *= config.gamma * config.traceLambda;
-              if (arr[i] > 1e-4) alive = true;
-              else arr[i] = 0;
-            }
-          }
-          if (!alive) staleA.push(key);
-        }
-        for (const key of staleA) agent.traces.delete(key);
-
-        const staleB = [];
-        for (const [key, arr] of agent.tracesB.entries()) {
-          const valArr = ensureQ(Q_B, key);
-          let alive = false;
-          for (let i = 0; i < 4; i++) {
-            if (arr[i] > 1e-5) {
-              valArr[i] += config.alpha * delta * arr[i];
-              arr[i] *= config.gamma * config.traceLambda;
-              if (arr[i] > 1e-4) alive = true;
-              else arr[i] = 0;
-            }
-          }
-          if (!alive) staleB.push(key);
-        }
-        for (const key of staleB) agent.tracesB.delete(key);
-
-        if (terminal || !greedyChosen) {
-          agent.traces.clear();
-          agent.tracesB.clear();
         }
       }
 
-      // Główna funkcja traces
-      function tracesUpdate(agent, sKey, a, r, sNextKey, terminal, greedyChosen) {
-        if (config.doubleQ) {
-          tracesUpdateDouble(agent, sKey, a, r, sNextKey, terminal, greedyChosen);
+      function decayTraces(traceMap) {
+        for (const trace of traceMap.values()) {
+          for (let i = 0; i < 4; i++) {
+            if (trace[i] > 1e-6) trace[i] *= config.gamma * config.traceLambda;
+          }
+        }
+      }
+
+      function tracesUpdate(agent, sKey, action, reward, nextKey, terminal, wasGreedy) {
+        if (!config.tracesEnabled) {
+          qUpdate(sKey, action, reward, nextKey, terminal);
+          return;
+        }
+
+        if (!config.doubleQ) {
+          // Standard Q(λ)
+          const delta = reward + config.gamma * (terminal ? 0 : maxQ(Q_A, nextKey)) - ensureQ(Q_A, sKey)[action];
+          const trace = agent.traces.A;
+          if (!trace.has(sKey)) trace.set(sKey, new Float32Array(4));
+          trace.get(sKey)[action] = 1.0; // replacing trace
+
+          applyTraces(Q_A, trace, delta);
+          if (terminal || !wasGreedy) agent.traces.clear();
         } else {
-          tracesUpdateStandard(agent, sKey, a, r, sNextKey, terminal, greedyChosen);
+          // Double Q + Traces
+          const updateA = Math.random() < 0.5;
+          const delta = updateA
+            ? computeTDTarget(Q_A, Q_B, sKey, nextKey, reward, terminal) - ensureQ(Q_A, sKey)[action]
+            : computeTDTarget(Q_B, Q_A, sKey, nextKey, reward, terminal) - ensureQ(Q_B, sKey)[action];
+
+          const traceMap = updateA ? agent.traces.A : agent.traces.B;
+          if (!traceMap.has(sKey)) traceMap.set(sKey, new Float32Array(4));
+          traceMap.get(sKey)[action] = 1.0;
+
+          if (updateA) {
+            applyTraces(Q_A, traceMap, delta);
+            decayTraces(agent.traces.B);
+          } else {
+            applyTraces(Q_B, traceMap, delta);
+            decayTraces(agent.traces.A);
+          }
+
+          if (terminal || !wasGreedy) agent.traces.clear();
         }
       }
 
@@ -1437,7 +1391,6 @@
       // ============================================================
 
       function getActionValues(rep) {
-        // W trybie Double Q używamy średniej, w standard Q — zwykłej Q
         return getAveragedQ(rep.key);
       }
 
@@ -1570,8 +1523,7 @@
           this.reached = false;
           this.steps = 0;
           this.totalReward = 0;
-          this.traces = new Map();
-          this.tracesB = new Map(); // drugi zestaw traces dla Double Q
+          this.traces = new Traces();
         }
 
         draw(ctx) {
@@ -1583,7 +1535,7 @@
       }
 
       // ============================================================
-      // ŚRODOWISKO - RYSOWANIE I DETEKCJA KOLIZJI
+      // ŚRODOWISKO
       // ============================================================
 
       const mazeCanvas = $('mazeCanvas');
@@ -1596,7 +1548,7 @@
       }
 
       function clearKnowledge() {
-        Q.clear();
+        Q_A.clear();
         Q_B.clear();
         visitCounts.clear();
       }
@@ -1682,7 +1634,7 @@
         ctx.fillStyle = grad;
         ctx.fillRect(0, 0, W, H);
 
-        // Siatka komórek
+        // Siatka
         ctx.strokeStyle = 'rgba(95, 146, 255, 0.12)';
         ctx.lineWidth = 1;
         for (let x = 20; x <= W - 20; x += config.cellSize) {
@@ -1704,7 +1656,7 @@
           ctx.fillRect(w.x, w.y, w.w, w.h);
         }
 
-        // Cel (piłka)
+        // Cel
         ctx.beginPath();
         ctx.fillStyle = '#22c55e';
         ctx.arc(goal.x, goal.y, goal.r, 0, Math.PI * 2);
@@ -1715,7 +1667,7 @@
         ctx.arc(goal.x, goal.y, goal.r + 9, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Start (gracz)
+        // Start
         ctx.beginPath();
         ctx.fillStyle = '#38bdf8';
         ctx.arc(start.x, start.y, 8, 0, Math.PI * 2);
@@ -1725,24 +1677,21 @@
         ctx.arc(start.x, start.y, 15, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Rysuj heatmapę wartości Q (lekko transparentna)
         drawQHeatmap();
 
-        // Wizualizacja Double Q: oznaczenie który estymator jest aktualnie aktywny
         if (config.doubleQ) {
           drawDoubleQIndicator();
         }
       }
 
-      // Heatmapa wartości Q — cieplejsze kolory = wyższe wartości
       function drawQHeatmap() {
-        const useQ = Q;
+        const useQ = Q_A;
         const cellW = config.cellSize;
         const cellH = cellW;
 
         for (const [key, vals] of useQ.entries()) {
           if (!config.doubleQ) {
-            if (!Q.has(key)) continue;
+            if (!Q_A.has(key)) continue;
           }
           const maxVal = maxArray(config.doubleQ ? getAveragedQ(key) : vals);
           if (maxVal <= 0.01) continue;
@@ -1753,22 +1702,20 @@
           const px = 20 + cx * cellW + cellW / 2;
           const py = 20 + cy * cellH + cellH / 2;
 
-          // Kolor odcienia zielonego/niebieskiego w zależności od wartości
           const intensity = Math.min(1, maxVal / 15);
           const circleR = cellW * 0.4 * Math.max(0.2, intensity);
 
           ctx.beginPath();
           if (maxVal < 3) {
-            ctx.fillStyle = `rgba(56, 189, 248, ${0.06 + intensity * 0.1})`; // niebieski
+            ctx.fillStyle = `rgba(56, 189, 248, ${0.06 + intensity * 0.1})`;
           } else if (maxVal < 10) {
-            ctx.fillStyle = `rgba(34, 197, 94, ${0.08 + intensity * 0.12})`; // zielony
+            ctx.fillStyle = `rgba(34, 197, 94, ${0.08 + intensity * 0.12})`;
           } else {
-            ctx.fillStyle = `rgba(167, 139, 250, ${0.08 + intensity * 0.12})`; // fioletowy dla celu
+            ctx.fillStyle = `rgba(167, 139, 250, ${0.08 + intensity * 0.12})`;
           }
           ctx.arc(px, py, circleR, 0, Math.PI * 2);
           ctx.fill();
 
-          // Wartość liczbowa pokazana w komórce
           if (config.cellSize >= 16 && intensity > 0.15) {
             ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + intensity * 0.35})`;
             ctx.font = `${Math.max(8, config.cellSize * 0.38)}px monospace`;
@@ -1779,15 +1726,13 @@
         }
       }
 
-      // Wskaźnik Double Q - pokazuje balans między estymatorami
       function drawDoubleQIndicator() {
-        const totalA = Q.size;
+        const totalA = Q_A.size;
         const totalB = Q_B.size;
         const total = totalA + totalB;
 
         if (total === 0) return;
 
-        // Mały pasek w rogu pokazujący stosunek wag
         const barW = 80;
         const barH = 6;
         const barX = W - barW - 12;
@@ -1837,10 +1782,6 @@
         histCtx.textAlign = 'left';
         histCtx.fillText('Historia epizodów', pad, 16);
 
-        // Separator Double Q historii
-        histCtx.fillStyle = '#a78bfa';
-        histCtx.font = '10px Inter, sans-serif';
-
         const data = runtime.history.slice(-120);
         if (!data.length) {
           histCtx.fillStyle = 'rgba(203, 220, 248, 0.75)';
@@ -1872,7 +1813,6 @@
         drawLine(data.map(d => (d.reward - rewardMin) / rewardRange), '#f59e0b');
         drawLine(data.map(d => d.explorationNorm), '#38bdf8');
 
-        // Etykiety osi Y
         histCtx.fillStyle = '#7d89a4';
         histCtx.font = '9px Inter, sans-serif';
         histCtx.textAlign = 'right';
@@ -1893,7 +1833,7 @@
           const decision = pickAction(sRep);
           const greedyChosen = isGreedyAction(decision.baseValues, decision.action);
 
-          if (config.strategy === 'ucb') {
+          if (config.strategy === 'ucb' || config.strategy === 'hybrid') {
             const counts = ensureCounts(sRep.countKey);
             counts[decision.action] += 1;
           }
@@ -1914,7 +1854,9 @@
             ag.x = nx;
             ag.y = ny;
             const distAfter = Math.hypot(ag.x - goal.x, ag.y - goal.y);
+            // Potential Based Reward Shaping
             reward += (distBefore - distAfter) * SHAPING_FACTOR;
+            
             if (atGoal(ag.x, ag.y)) {
               reward = REWARD_GOAL;
               terminal = true;
@@ -1932,9 +1874,9 @@
           const nextRep = getStateRep(ag.x, ag.y);
 
           if (config.tracesEnabled) {
-            tracesUpdate(ag, sRep.key, decision.action, reward, nextRep.key, terminal, greedyChosen);
+            tracesUpdate(ag, sRep.key, decision.action, reward, nextRep.key, terminal, isGreedyAction(decision.baseValues, decision.action));
           } else {
-            qUpdateMain(sRep.key, decision.action, reward, nextRep.key, terminal);
+            qUpdate(sRep.key, decision.action, reward, nextRep.key, terminal);
           }
 
           ag.totalReward += reward;
@@ -1973,9 +1915,9 @@
         $('successVal').textContent = Math.round(runtime.lastSuccessRate * 100) + '%';
         $('avgRewardVal').textContent = runtime.lastAvgReward.toFixed(2);
         $('doubleQLabel').textContent = config.doubleQ ? 'Włączone (' + estLabel + ')' : 'Wyłączone (' + estLabel + ')';
-        $('knowledgeVal1').textContent = Q.size + ' stanów';
+        $('knowledgeVal1').textContent = Q_A.size + ' stanów';
         $('knowledgeVal2').textContent = Q_B.size + ' stanów';
-        $('knowledgeVal').textContent = (Q.size + Q_B.size) + ' stanów';
+        $('knowledgeVal').textContent = (Q_A.size + Q_B.size) + ' stanów';
         $('pauseBtn').textContent = runtime.paused ? 'Wznów' : 'Pauza';
 
         $('liveHint').textContent =
@@ -2055,7 +1997,6 @@
       // ============================================================
 
       function bindControls() {
-        // Double Q toggle
         $('doubleQ').addEventListener('change', (e) => {
           config.doubleQ = e.target.checked;
           resetKnowledgeAndEpisodes();
@@ -2098,6 +2039,7 @@
           }
         });
 
+        // Epsilon controls
         $('epsStart').addEventListener('input', (e) => {
           config.epsStart = +e.target.value / 100;
           runtime.epsilonCurrent = config.epsStart;
@@ -2132,6 +2074,7 @@
           resetEpisodesOnly();
         });
 
+        // Softmax
         $('tempStart').addEventListener('input', (e) => {
           config.tempStart = +e.target.value / 100;
           runtime.temperatureCurrent = config.tempStart;
@@ -2149,18 +2092,21 @@
           $('tempDecayOut').textContent = config.tempDecay.toFixed(3);
         });
 
+        // Optimistic
         $('optimisticInit').addEventListener('input', (e) => {
           config.optimisticInit = +e.target.value / 10;
           $('optimisticInitOut').textContent = config.optimisticInit.toFixed(1);
           if (config.strategy === 'optimistic') resetKnowledgeAndEpisodes();
         });
 
+        // UCB
         $('ucbC').addEventListener('input', (e) => {
           config.ucbC = +e.target.value / 100;
           $('ucbCOut').textContent = config.ucbC.toFixed(2);
           updateStatus();
         });
 
+        // Hybrid
         $('hybridUcbC').addEventListener('input', (e) => {
           config.hybridUcbC = +e.target.value / 100;
           $('hybridUcbCOut').textContent = config.hybridUcbC.toFixed(2);
@@ -2173,6 +2119,7 @@
           updateStatus();
         });
 
+        // Noisy
         $('noisySigma').addEventListener('input', (e) => {
           config.noisySigma = +e.target.value / 100;
           runtime.noiseSigmaCurrent = config.noisySigma;
@@ -2190,6 +2137,7 @@
           $('noisySigmaDecayOut').textContent = config.noisySigmaDecay.toFixed(3);
         });
 
+        // Traces
         $('tracesEnabled').addEventListener('change', (e) => {
           config.tracesEnabled = e.target.checked;
           resetEpisodesOnly();
@@ -2200,6 +2148,7 @@
           $('traceLambdaOut').textContent = config.traceLambda.toFixed(2);
         });
 
+        // Buttons
         $('restartEpisodes').addEventListener('click', () => {
           resetEpisodesOnly();
         });
@@ -2230,5 +2179,4 @@
     })();
   </script>
 </body>
-
 </html>
