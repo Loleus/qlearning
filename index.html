@@ -559,8 +559,8 @@
     <aside id="ui" class="panel">
       <div class="hero">
         <h1>Q-learning i Double Q-Learning w labiryncie</h1>
-        <p class="subtle">Zaawansowana symulacja tablicowego Q-learningu z poprawną implementacją Double Q-Learning (Hasselt 2010), 
-          Watkins's Q(λ) oraz siedmioma strategiami eksploracji. Praca licencjacka — wersja po recenzji matematyczno-programistycznej.</p>
+        <p class="subtle">Symulacja tablicowego Q-learningu z poprawną implementacją Double Q-Learning (Hasselt 2010), 
+          Watkins's Q(λ) oraz siedmioma strategiami eksploracji.</p>
       </div>
 
       <div class="status-grid">
@@ -1127,7 +1127,10 @@
         epsilonCurrent: config.epsStart,
         temperatureCurrent: config.tempStart,
         noiseSigmaCurrent: config.noisySigma,
-        history: []
+        history: [],
+        frameCounter: 0,
+        lastFrameTime: 0,
+        softmaxCache: new Map()
       };
 
       // Double Q-Learning: dwie tablice Q
@@ -1195,9 +1198,15 @@
         return values[action] >= best - 1e-9;
       }
 
-      // Softmax numerycznie stabilny (odejmujemy max)
+      // Softmax numerycznie stabilny (odejmujemy max) z cache
       function softmax(values, temperature) {
         const t = Math.max(0.05, temperature);
+        // Cache key: skrót wartości i temperatury
+        const cacheKey = values.join(',') + '|' + t.toFixed(4);
+        if (runtime.softmaxCache.has(cacheKey)) {
+          return runtime.softmaxCache.get(cacheKey);
+        }
+        
         const maxV = maxArray(values);
         const probs = new Float32Array(values.length);
         let sum = 0;
@@ -1209,9 +1218,19 @@
         if (sum <= 0) {
           const fallback = 1 / values.length;
           for (let i = 0; i < probs.length; i++) probs[i] = fallback;
+          runtime.softmaxCache.set(cacheKey, probs);
+          if (runtime.softmaxCache.size > 2000) {
+            const firstKey = runtime.softmaxCache.keys().next().value;
+            runtime.softmaxCache.delete(firstKey);
+          }
           return probs;
         }
         for (let i = 0; i < probs.length; i++) probs[i] /= sum;
+        runtime.softmaxCache.set(cacheKey, probs);
+        if (runtime.softmaxCache.size > 2000) {
+          const firstKey = runtime.softmaxCache.keys().next().value;
+          runtime.softmaxCache.delete(firstKey);
+        }
         return probs;
       }
 
@@ -1319,10 +1338,6 @@
           q[action] += config.alpha * (target - q[action]);
         }
       }
-
-      // ============================================================
-      // ELIGIBILITY TRACES (Watkins's Q(lambda))
-      // ============================================================
 
       // ============================================================
       // ELIGIBILITY TRACES (Watkins's Q(lambda))
@@ -1688,8 +1703,12 @@
         const useQ = Q_A;
         const cellW = config.cellSize;
         const cellH = cellW;
+        
+        // Limit do 200 stanów dla optymalizacji
+        const maxStates = 200;
+        const stateEntries = Array.from(useQ.entries()).slice(0, maxStates);
 
-        for (const [key, vals] of useQ.entries()) {
+        for (const [key, vals] of stateEntries) {
           if (!config.doubleQ) {
             if (!Q_A.has(key)) continue;
           }
@@ -1703,19 +1722,8 @@
           const py = 20 + cy * cellH + cellH / 2;
 
           const intensity = Math.min(1, maxVal / 15);
-          const circleR = cellW * 0.4 * Math.max(0.2, intensity);
 
-          ctx.beginPath();
-          if (maxVal < 3) {
-            ctx.fillStyle = `rgba(56, 189, 248, ${0.06 + intensity * 0.1})`;
-          } else if (maxVal < 10) {
-            ctx.fillStyle = `rgba(34, 197, 94, ${0.08 + intensity * 0.12})`;
-          } else {
-            ctx.fillStyle = `rgba(167, 139, 250, ${0.08 + intensity * 0.12})`;
-          }
-          ctx.arc(px, py, circleR, 0, Math.PI * 2);
-          ctx.fill();
-
+          // Cyfry zawsze rysuj (co klatkę)
           if (config.cellSize >= 16 && intensity > 0.15) {
             ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + intensity * 0.35})`;
             ctx.font = `${Math.max(8, config.cellSize * 0.38)}px monospace`;
@@ -1891,6 +1899,16 @@
       }
 
       function renderFrame() {
+        // FPS capping na 60 fps
+        const now = performance.now();
+        const frameInterval = 1000 / 60; // 60 fps target
+        if (now - runtime.lastFrameTime < frameInterval) {
+          requestAnimationFrame(renderFrame);
+          return;
+        }
+        runtime.lastFrameTime = now;
+        runtime.frameCounter++;
+        
         drawMaze();
         if (!runtime.paused) stepSimulation();
         for (const ag of agents) ag.draw(ctx);
@@ -2175,7 +2193,6 @@
       drawHistoryChart();
       updateStatus();
       renderFrame();
-
     })();
   </script>
 </body>
