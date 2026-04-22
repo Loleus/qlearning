@@ -500,7 +500,7 @@ class Agent {
 
   draw(ctx) {
     ctx.beginPath();
-    ctx.fillStyle = this.reached ? '#22c55e' : (this.dead ? '#ef4444' : '#f8fafc');
+    ctx.fillStyle = this.reached ? '#22c55e' : (this.dead ? '#c2000077' : '#e3ecf698');
     ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
     ctx.fill();
   }
@@ -691,8 +691,8 @@ function drawMaze() {
 
       // Cyfry zawsze rysuj (co klatkę) jeśli wystarczająco duże
       if (config.cellSize >= 16 && intensity > 0.05) {
-        ctx.fillStyle = `rgba(128, 128, 255, ${0.1 + intensity * 0.5})`;
-        ctx.font = `${Math.max(9, config.cellSize * 0.38)}px monospace`;
+        ctx.fillStyle = `rgba(198, 198, 255, ${0.1 + intensity * 0.5})`;
+        ctx.font = `${Math.max(6, config.cellSize * 0.5)}px Inter, monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(maxVal.toFixed(1), px, py);
