@@ -656,7 +656,7 @@
           const cellH = cellW;
 
           // Limit do N stanów dla optymalizacji — wybieramy top-N według najwyższego Q (maxVal)
-          const maxStates = 200;
+          const maxStates = 330;
 
           // Zbierz unikalne klucze z obu map Q_A i Q_B (żeby nie pomijać stanów istniejących tylko w Q_B)
           const keys = new Set();
@@ -691,7 +691,7 @@
 
             // Cyfry zawsze rysuj (co klatkę) jeśli wystarczająco duże
             if (config.cellSize >= 16 && intensity > 0.05) {
-              ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + intensity * 0.5})`;
+              ctx.fillStyle = `rgba(128, 128, 255, ${0.1 + intensity * 0.5})`;
               ctx.font = `${Math.max(9, config.cellSize * 0.38)}px monospace`;
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
