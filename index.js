@@ -691,8 +691,8 @@ function drawMaze() {
 
       // Cyfry zawsze rysuj (co klatkę) jeśli wystarczająco duże
       if (config.cellSize >= 16 && intensity > 0.05) {
-        ctx.fillStyle = `rgba(198, 198, 255, ${0.1 + intensity * 0.5})`;
-        ctx.font = `${Math.max(6, config.cellSize * 0.5)}px Inter, monospace`;
+        ctx.fillStyle = `rgba(98, 98, 195, ${0.1 + intensity * 0.5})`;
+        ctx.font = `${Math.max(7, config.cellSize * 0.5)}px Inter, monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(maxVal.toFixed(1), px, py);
