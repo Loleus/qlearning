@@ -49,7 +49,7 @@
 
     #layout {
       display: grid;
-      grid-template-columns: 366px minmax(320px, 1fr) 460px;
+      grid-template-columns: 365px minmax(320px, 1fr) 460px;
       gap: 14px;
       max-width: 1800px;
       margin: 0 auto;
@@ -110,6 +110,9 @@
 
     p {
       margin: 0 0 10px;
+            text-indent: 18px;
+      text-align: justify;
+      hyphens: auto;
     }
 
     ul,
@@ -120,7 +123,10 @@
 
     .subtle {
       color: #9fb4d8;
-      font-size: 0.88rem;
+      font-size: 0.78rem;
+      text-indent: 18px;
+      text-align: justify;
+      hyphens: auto;
     }
 
     .hero {
@@ -260,8 +266,8 @@
       gap: 5px;
       padding: 2px 8px;
       border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 800;
+      font-size: 0.64rem;
+      font-weight: 400;
       letter-spacing: 0.05em;
       text-transform: uppercase;
       border: 1px solid transparent;
@@ -858,7 +864,7 @@
         <h2>Legenda zmian parametrów</h2>
         <div class="badge-row" style="margin-bottom:10px;">
           <span class="badge rt">real-time</span>
-          <span class="badge next">od następnego epizodu / batcha</span>
+          <span class="badge next">od nast. epizodu</span>
           <span class="badge reset-ep">reset epizodów</span>
           <span class="badge reset-q">reset Q</span>
         </div>
@@ -1713,77 +1719,54 @@
 
         drawQHeatmap();
 
-        if (config.doubleQ) {
-          drawDoubleQIndicator();
-        }
-      }
+        function drawQHeatmap() {
+          const cellW = config.cellSize;
+          const cellH = cellW;
 
-      function drawQHeatmap() {
-        const useQ = Q_A;
-        const cellW = config.cellSize;
-        const cellH = cellW;
+          // Limit do N stanów dla optymalizacji — wybieramy top-N według najwyższego Q (maxVal)
+          const maxStates = 200;
 
-        // Limit do 200 stanów dla optymalizacji
-        const maxStates = 200;
-        const stateEntries = Array.from(useQ.entries()).slice(0, maxStates);
+          // Zbierz unikalne klucze z obu map Q_A i Q_B (żeby nie pomijać stanów istniejących tylko w Q_B)
+          const keys = new Set();
+          for (const k of Q_A.keys()) keys.add(k);
+          for (const k of Q_B.keys()) keys.add(k);
 
-        for (const [key, vals] of stateEntries) {
-          if (!config.doubleQ) {
-            if (!Q_A.has(key)) continue;
+          // Zmapuj klucze na ich maksymalną wartość (uśrednione jeśli doubleQ)
+          const keyed = [];
+          for (const key of keys) {
+            const vals = config.doubleQ ? getAveragedQ(key) : (Q_A.get(key) || null);
+            if (!vals) continue;
+            const maxVal = maxArray(vals);
+            // pomiń praktycznie zerowe wartości
+            if (maxVal <= 0.01) continue;
+            keyed.push({ key, maxVal });
           }
-          const maxVal = maxArray(config.doubleQ ? getAveragedQ(key) : vals);
-          if (maxVal <= 0.01) continue;
 
-          const [cx, cy] = key.split(',').map(Number);
-          if (isNaN(cx) || isNaN(cy)) continue;
+          // sortuj malejąco i weź top N
+          keyed.sort((a, b) => b.maxVal - a.maxVal);
+          const top = keyed.slice(0, maxStates);
 
-          const px = 20 + cx * cellW + cellW / 2;
-          const py = 20 + cy * cellH + cellH / 2;
+          for (const item of top) {
+            const key = item.key;
+            const maxVal = item.maxVal;
+            const [cx, cy] = key.split(',').map(Number);
+            if (isNaN(cx) || isNaN(cy)) continue;
 
-          const intensity = Math.min(1, maxVal / 15);
+            const px = 20 + cx * cellW + cellW / 2;
+            const py = 20 + cy * cellH + cellH / 2;
 
-          // Cyfry zawsze rysuj (co klatkę)
-          if (config.cellSize >= 16 && intensity > 0.15) {
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + intensity * 0.35})`;
-            ctx.font = `${Math.max(8, config.cellSize * 0.38)}px monospace`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(maxVal.toFixed(1), px, py);
+            const intensity = Math.min(1, maxVal / 15);
+
+            // Cyfry zawsze rysuj (co klatkę) jeśli wystarczająco duże
+            if (config.cellSize >= 16 && intensity > 0.05) {
+              ctx.fillStyle = `rgba(255, 255, 255, ${0.1 + intensity * 0.5})`;
+              ctx.font = `${Math.max(9, config.cellSize * 0.38)}px monospace`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(maxVal.toFixed(1), px, py);
+            }
           }
         }
-      }
-
-      function drawDoubleQIndicator() {
-        const totalA = Q_A.size;
-        const totalB = Q_B.size;
-        const total = totalA + totalB;
-
-        if (total === 0) return;
-
-        const barW = 80;
-        const barH = 6;
-        const barX = W - barW - 12;
-        const barY = H - 18;
-
-        ctx.fillStyle = 'rgba(10, 22, 42, 0.8)';
-        ctx.fillRect(barX - 2, barY - 2, barW + 4, barH + 16);
-        ctx.strokeStyle = 'rgba(90, 141, 255, 0.3)';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(barX - 2, barY - 2, barW + 4, barH + 16);
-
-        ctx.fillStyle = 'rgba(98, 162, 255, 0.7)';
-        const ratioA = total > 0 ? totalA / total : 0.5;
-        ctx.fillRect(barX, barY, barW * ratioA, barH);
-
-        ctx.fillStyle = 'rgba(167, 139, 250, 0.7)';
-        ctx.fillRect(barX + barW * ratioA, barY, barW * (1 - ratioA), barH);
-
-        ctx.fillStyle = '#9cb0d4';
-        ctx.font = '9px Inter, sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText('Qᴬ', barX, barY + barH + 10);
-        ctx.textAlign = 'right';
-        ctx.fillText('Qᴮ', barX + barW, barY + barH + 10);
       }
 
       function drawHistoryChart() {
