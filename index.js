@@ -650,6 +650,7 @@ function drawMaze() {
   ctx.stroke();
 
   drawQHeatmap();
+  
   drawBrightGridLines();
   function drawQHeatmap() {
     const cellW = config.cellSize;
@@ -715,7 +716,7 @@ function drawBrightGridLines() {
     if (total > maxVisits) maxVisits = total;
   }
 
-  // Rysuj jaśniejsze ramki dla każdej odwiedzonej komórki
+  // Rysuj jaśniejsze ramki i podświetlone krawędzie dla każdej odwiedzonej komórki
   for (const [key, counts] of visitCounts.entries()) {
     const [cx, cy] = key.split(',').map(Number);
     if (isNaN(cx) || isNaN(cy)) continue;
@@ -750,6 +751,43 @@ function drawBrightGridLines() {
     ctx.beginPath();
     ctx.rect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
     ctx.stroke();
+
+    // Dodatkowo: jeśli są wizyty z akcji wskazujących ruch wzdłuż krawędzi,
+    // podświetl samą krawędź (przydatne gdy agenci chodzą idealnie po linii)
+    // action: 0=Góra,1=Dół,2=Lewo,3=Prawo
+    const edgeAlpha = Math.min(1, Math.max(counts[0], counts[1], counts[2], counts[3]) / maxVisits);
+    const edgeColor = `rgba(${r}, ${g}, ${b}, ${(alpha * 0.9 + edgeAlpha * 0.5).toFixed(3)})`;
+    ctx.strokeStyle = edgeColor;
+    ctx.lineWidth = 2 + norm * 1.6;
+
+    // Górna krawędź (ruch w górę z tej komórki)
+    if (counts[0] > 0) {
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, y + 0.5);
+      ctx.lineTo(x + cellW - 0.5, y + 0.5);
+      ctx.stroke();
+    }
+    // Dolna krawędź (ruch w dół)
+    if (counts[1] > 0) {
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, y + cellH - 0.5);
+      ctx.lineTo(x + cellW - 0.5, y + cellH - 0.5);
+      ctx.stroke();
+    }
+    // Lewa krawędź (ruch w lewo)
+    if (counts[2] > 0) {
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, y + 0.5);
+      ctx.lineTo(x + 0.5, y + cellH - 0.5);
+      ctx.stroke();
+    }
+    // Prawa krawędź (ruch w prawo)
+    if (counts[3] > 0) {
+      ctx.beginPath();
+      ctx.moveTo(x + cellW - 0.5, y + 0.5);
+      ctx.lineTo(x + cellW - 0.5, y + cellH - 0.5);
+      ctx.stroke();
+    }
   }
 }
 
