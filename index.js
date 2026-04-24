@@ -6,10 +6,10 @@
 const W = 720;
 const H = 520;
 const POP_SIZE = 100;
-const STEP_LIMIT = 2600;
+const STEP_LIMIT = 1000;
 const REWARD_GOAL = 35.0;
-const PENALTY_STEP = -0.018;
-const PENALTY_WALL = -10.0;
+const PENALTY_STEP = -0.005;
+const PENALTY_WALL = -5.0;
 const PENALTY_TIMEOUT = -4.0;
 const SHAPING_FACTOR = 0.12;
 
@@ -21,7 +21,7 @@ const ACTIONS = [
   { dx: 1, dy: 0 }
 ];
 
-const goal = { x: 310, y: H - 290, r: 18 };
+const goal = { x: 50, y: H - 50, r: 18 };
 const start = { x: W - 70, y: 60 };
 
 const walls = [
