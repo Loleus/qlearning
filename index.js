@@ -21,7 +21,7 @@ const ACTIONS = [
   { dx: 1, dy: 0 }
 ];
 
-const goal = { x: 50, y: H - 50, r: 18 };
+const goal = { x: 170, y: H - 190, r: 18 };
 const start = { x: W - 70, y: 60 };
 
 const walls = [
