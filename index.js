@@ -444,7 +444,7 @@ function getExplorationMeta() {
     case 'noisy':
       return { text: 'σ = ' + runtime.noiseSigmaCurrent.toFixed(3), norm: clamp(runtime.noiseSigmaCurrent / 1.5, 0, 1) };
     default:
-      return { text: '—', norm: 0 };
+      return { text: '-', norm: 0 };
   }
 }
 
@@ -656,7 +656,7 @@ function drawMaze() {
     const cellW = config.cellSize;
     const cellH = cellW;
 
-    // Limit do N stanów dla optymalizacji — wybieramy top-N według najwyższego Q (maxVal)
+    // Limit do N stanów dla optymalizacji - wybieramy top-N według najwyższego Q (maxVal)
     const maxStates = 330;
 
     // Zbierz unikalne klucze z obu map Q_A i Q_B (żeby nie pomijać stanów istniejących tylko w Q_B)
@@ -728,7 +728,7 @@ function drawBrightGridLines() {
     // Normalizuj liczbę wizyt do zakresu 0-1
     const rawNorm = Math.min(totalVisits / maxVisits, 1);
 
-    // Delikatne podświetlenie już przy pierwszej wizycie — bez pełnej bieli
+    // Delikatne podświetlenie już przy pierwszej wizycie - bez pełnej bieli
     const minNormVisible = 0.18;
     const norm = Math.max(rawNorm, minNormVisible);
 
@@ -858,7 +858,7 @@ function drawHistoryChart() {
   const data = runtime.history.slice(-120);
   if (!data.length) {
     histCtx.fillStyle = 'rgba(203, 220, 248, 0.75)';
-    histCtx.fillText('Brak ukończonych epizodów — uruchom symulację i obserwuj skuteczność, nagrodę oraz siłę eksploracji.', pad, h / 2);
+    histCtx.fillText('Brak ukończonych epizodów - uruchom symulację i obserwuj skuteczność, nagrodę oraz siłę eksploracji.', pad, h / 2);
     return;
   }
 
@@ -906,7 +906,7 @@ function stepSimulation() {
     const decision = pickAction(sRep);
     const greedyChosen = isGreedyAction(decision.baseValues, decision.action);
 
-    // Zliczaj wizyty zawsze — potrzebne do rysowania podświetlenia siatki
+    // Zliczaj wizyty zawsze - potrzebne do rysowania podświetlenia siatki
     const counts = ensureCounts(sRep.countKey);
     counts[decision.action] += 1;
 
@@ -993,7 +993,7 @@ function updateStatus() {
   $('stateBadge').textContent = learningMode;
   $('strategyBadge').textContent = strategyLabel(config.strategy);
   $('exploreVal').textContent = getExplorationMeta().text;
-  $('bestVal').textContent = runtime.bestSteps == null ? '—' : runtime.bestSteps + ' kroków';
+  $('bestVal').textContent = runtime.bestSteps == null ? '-' : runtime.bestSteps + ' kroków';
   $('successVal').textContent = Math.round(runtime.lastSuccessRate * 100) + '%';
   $('avgRewardVal').textContent = runtime.lastAvgReward.toFixed(2);
   $('doubleQLabel').textContent = config.doubleQ ? 'Włączone (' + estLabel + ')' : 'Wyłączone (' + estLabel + ')';
