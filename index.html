@@ -27,7 +27,7 @@
         <div class="metric"><span>Tryb uczenia</span><b id="stateBadge">Standard Q</b></div>
         <div class="metric"><span>Strategia</span><b id="strategyBadge">ε-greedy klasyczny</b></div>
         <div class="metric"><span>Par. eksploracji</span><b id="exploreVal">ε = 0.350</b></div>
-        <div class="metric"><span>Najlepszy wynik</span><b id="bestVal">—</b></div>
+        <div class="metric"><span>Najlepszy wynik</span><b id="bestVal">-</b></div>
         <div class="metric"><span>Skuteczność</span><b id="successVal">0%</b></div>
         <div class="metric"><span>Średnia nagroda</span><b id="avgRewardVal">0.00</b></div>
       </div>
@@ -323,7 +323,7 @@
         <span class="formula">a = { losowa akcja z prawd. ε, argmaxₐ Q(s,a) w przeciwnym razie }</span>
         <p>Podstawowa strategia ε-greedy bez dynamicznego zmniejszania ε. Stała wartość eksploracji.</p>
         <ul>
-          <li><b>ε</b> — <span class="badge rt">real-time</span></li>
+          <li><b>ε</b> - <span class="badge rt">real-time</span></li>
         </ul>
 
         <h3>1.1. ε-greedy z dynamicznym ε</h3>
@@ -333,9 +333,9 @@
         <p>Dostępne typy decay: <b>Linear</b> (ε = ε₀ - k·t), <b>Exponential</b> (ε = ε₀ · decayᵗ), <b>Inverse</b> (ε =
           ε₀ / (1 + k·t)), <b>Cosine annealing</b> (ε = ε_min + ½(ε₀-ε_min)(1+cos(πt/T))).</p>
         <ul>
-          <li><b>Typ decay ε</b> — <span class="badge next">od nast. ep.</span></li>
-          <li><b>ε start</b> — <span class="badge rt">real-time</span></li>
-          <li><b>ε min, decay, boost</b> — <span class="badge next">od nast. ep.</span></li>
+          <li><b>Typ decay ε</b> - <span class="badge next">od nast. ep.</span></li>
+          <li><b>ε start</b> - <span class="badge rt">real-time</span></li>
+          <li><b>ε min, decay, boost</b> - <span class="badge next">od nast. ep.</span></li>
         </ul>
 
         <h3>2. Softmax / Boltzmann</h3>
@@ -343,8 +343,8 @@
         <p>Im wyższa temperatura <b>τ</b>, tym bardziej "miękki" i eksploracyjny wybór. Gdy τ maleje, polityka coraz
           częściej wybiera najlepsze akcje.</p>
         <ul>
-          <li><b>τ start</b> — <span class="badge rt">real-time</span></li>
-          <li><b>τ min, decay</b> — <span class="badge next">od nast. ep.</span></li>
+          <li><b>τ start</b> - <span class="badge rt">real-time</span></li>
+          <li><b>τ min, decay</b> - <span class="badge next">od nast. ep.</span></li>
         </ul>
 
         <h3>3. Optimistic Q-initialization</h3>
@@ -353,8 +353,8 @@
           opłacalne. To działa jak eksploracja bez dużego ε. Ta strategia jest dostępna tylko dla tablicowego
           Q-learningu.</p>
         <ul>
-          <li><b>Q₀</b> — <span class="badge reset-q">reset Q + epizodów</span></li>
-          <li><b>Zmiana strategii na/z optimistic</b> — <span class="badge reset-q">reset Q + epizodów</span></li>
+          <li><b>Q₀</b> - <span class="badge reset-q">reset Q + epizodów</span></li>
+          <li><b>Zmiana strategii na/z optimistic</b> - <span class="badge reset-q">reset Q + epizodów</span></li>
         </ul>
 
         <h3>4. UCB</h3>
@@ -362,8 +362,8 @@
         <p>Składnik ufności premiuje rzadko wybierane akcje. Gdy licznik odwiedzin rośnie, bonus eksploracyjny maleje i
           polityka przechodzi do eksploatacji.</p>
         <ul>
-          <li><b>c</b> — <span class="badge rt">real-time</span></li>
-          <li><b>Zmiana strategii na UCB</b> — <span class="badge reset-ep">reset epizodów</span></li>
+          <li><b>c</b> - <span class="badge rt">real-time</span></li>
+          <li><b>Zmiana strategii na UCB</b> - <span class="badge reset-ep">reset epizodów</span></li>
         </ul>
 
         <h3>4.1. Hybrydowa (UCB + ε-greedy)</h3>
@@ -372,8 +372,8 @@
         <p>Kombinacja UCB z ε-greedy. Z prawdopodobieństwem ε wybiera losowo, w przeciwnym razie używa UCB do wyboru
           akcji.</p>
         <ul>
-          <li><b>c UCB</b> — <span class="badge reset-q">reset Q</span></li>
-          <li><b>ε</b> — <span class="badge rt">real-time</span></li>
+          <li><b>c UCB</b> - <span class="badge reset-q">reset Q</span></li>
+          <li><b>ε</b> - <span class="badge rt">real-time</span></li>
         </ul>
 
         <h3>5. NoisyNet-style</h3>
@@ -381,8 +381,8 @@
         <p>Zastosowanie eksploracji typu NoisyNet przez szum Gaussowski dodawany do wartości akcji przy wyborze ruchu.
           Pozwala to badać przestrzeń bez ręcznie ustawianego ε.</p>
         <ul>
-          <li><b>σ start</b> — <span class="badge rt">real-time</span></li>
-          <li><b>σ min, decay</b> — <span class="badge next">od nast. ep.</span></li>
+          <li><b>σ start</b> - <span class="badge rt">real-time</span></li>
+          <li><b>σ min, decay</b> - <span class="badge next">od nast. ep.</span></li>
         </ul>
       </div>
 
@@ -403,7 +403,7 @@
           <li>Aktualizacja Qᴬ: wybierz akcję przez argmax z Qᴬ, ale oceń jej wartość przez <b>Qᴮ</b></li>
           <li>Aktualizacja Qᴮ: wybierz akcję przez argmax z Qᴮ, ale oceń jej wartość przez <b>Qᴬ</b></li>
           <li>To decoupling zapewnia umiarkowane, nieobciążone szacowanie (Hasselt, 2010)</li>
-          <li><b>Włączenie Double Q</b> — <span class="badge reset-q">reset Q + epizodów</span></li>
+          <li><b>Włączenie Double Q</b> - <span class="badge reset-q">reset Q + epizodów</span></li>
         </ul>
       </div>
 
@@ -416,20 +416,20 @@
           wcześniejszych stanów. W tej implementacji są to ślady zastępujące (replacing traces) z czyszczeniem przy
           przejściu niezgodnym z polityką zachłanną.</p>
         <ul>
-          <li><b>Włączenie traces</b> — <span class="badge next">od nast. ep.</span></li>
-          <li><b>Lambda λ</b> — <span class="badge next">od nast. ep.</span></li>
+          <li><b>Włączenie traces</b> - <span class="badge next">od nast. ep.</span></li>
+          <li><b>Lambda λ</b> - <span class="badge next">od nast. ep.</span></li>
         </ul>
       </div>
 
       <div class="doc-block">
         <h2>Wpływ pozostałych parametrów</h2>
         <ul class="two-col-list">
-          <li><b>Rozmiar komórki</b> — reset Q, bo zmienia dyskretyzację stanu.</li>
-          <li><b>Alpha α, Gamma γ</b> — działają natychmiast.</li>
-          <li><b>Lambda λ</b> — od następnego epizodu.</li>
-          <li><b>Prędkość</b> — natychmiast na ruch agentów.</li>
-          <li><b>Reset epizodów</b> — czyści historię, zachowuje wiedzę Q.</li>
-          <li><b>Reset Q</b> — czyści wiedzę i resetuje epizody.</li>
+          <li><b>Rozmiar komórki</b> - reset Q, bo zmienia dyskretyzację stanu.</li>
+          <li><b>Alpha α, Gamma γ</b> - działają natychmiast.</li>
+          <li><b>Lambda λ</b> - od następnego epizodu.</li>
+          <li><b>Prędkość</b> - natychmiast na ruch agentów.</li>
+          <li><b>Reset epizodów</b> - czyści historię, zachowuje wiedzę Q.</li>
+          <li><b>Reset Q</b> - czyści wiedzę i resetuje epizody.</li>
         </ul>
       </div>
 
